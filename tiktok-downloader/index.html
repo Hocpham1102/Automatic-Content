@@ -1003,15 +1003,15 @@
           const fileName = `tiktok_${Date.now()}_${item.index + 1}.mp4`;
           try {
             updateBatchItem(item.index, "loading", "Đang tải file");
-            await downloadViaBlob(item.downloadUrl, fileName);
+            await downloadViaBlobWithRetry(item.downloadUrl, fileName, 3);
             updateBatchItem(item.index, "success", "Đã tải xong");
             successCount++;
           } catch (err) {
             console.error(err);
-            updateBatchItem(item.index, "error", "Tải file thất bại");
+            updateBatchItem(item.index, "error", parseDownloadError(err));
           }
 
-          await sleep(1200);
+          await sleep(1500);
         }
 
         if (!successCount) {
@@ -1117,22 +1117,55 @@
         }
       }
 
+      async function downloadViaBlobWithRetry(videoUrl, filename, maxAttempts) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            await downloadViaBlob(videoUrl, filename);
+            return;
+          } catch (err) {
+            lastError = err;
+            if (attempt < maxAttempts) {
+              await sleep(600 * attempt);
+            }
+          }
+        }
+
+        throw lastError || new Error("DOWNLOAD_FAILED");
+      }
+
       async function downloadViaBlob(videoUrl, filename) {
         const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
-        const response = await fetch(dlUrl);
+        const response = await fetch(dlUrl, { cache: "no-store" });
 
         if (!response.ok) {
           throw new Error(`DOWNLOAD_HTTP_${response.status}`);
         }
 
         const blob = await response.blob();
+        if (!blob || blob.size === 0) {
+          throw new Error("EMPTY_BLOB");
+        }
+
+        const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
+        a.href = objectUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+      }
+
+      function parseDownloadError(err) {
+        const msg = String((err && err.message) || err || "");
+        if (msg.startsWith("DOWNLOAD_HTTP_"))
+          return "Máy chủ tải trả lỗi, thử lại sau";
+        if (msg === "EMPTY_BLOB") return "File tải về rỗng";
+        if (msg.includes("Failed to fetch"))
+          return "Không lấy được file từ server local";
+        return "Tải file thất bại";
       }
 
       // ── Helpers ──
