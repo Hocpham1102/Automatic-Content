@@ -1001,10 +1001,17 @@
         // B2: Khi đã có danh sách link tải, kích hoạt tải lần lượt.
         for (const item of readyDownloads) {
           const fileName = `tiktok_${Date.now()}_${item.index + 1}.mp4`;
-          triggerDirectDownload(item.downloadUrl, fileName);
-          updateBatchItem(item.index, "success", "Đã gửi tải");
-          successCount++;
-          await sleep(200);
+          try {
+            updateBatchItem(item.index, "loading", "Đang tải file");
+            await downloadViaBlob(item.downloadUrl, fileName);
+            updateBatchItem(item.index, "success", "Đã tải xong");
+            successCount++;
+          } catch (err) {
+            console.error(err);
+            updateBatchItem(item.index, "error", "Tải file thất bại");
+          }
+
+          await sleep(1200);
         }
 
         if (!successCount) {
@@ -1110,14 +1117,22 @@
         }
       }
 
-      function triggerDirectDownload(videoUrl, filename) {
+      async function downloadViaBlob(videoUrl, filename) {
         const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+        const response = await fetch(dlUrl);
+
+        if (!response.ok) {
+          throw new Error(`DOWNLOAD_HTTP_${response.status}`);
+        }
+
+        const blob = await response.blob();
         const a = document.createElement("a");
-        a.href = dlUrl;
+        a.href = URL.createObjectURL(blob);
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       }
 
       // ── Helpers ──
