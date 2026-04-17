@@ -960,16 +960,15 @@
 
         let successCount = 0;
         let firstVideoRendered = false;
+        const readyDownloads = [];
 
+        // B1: Lấy link tải cho toàn bộ URL trước.
         for (let i = 0; i < links.length; i++) {
           const tiktokUrl = links[i];
           updateBatchItem(i, "loading", "Đang xử lý");
 
           try {
-            const res = await fetch(
-              `/api/info?url=${encodeURIComponent(tiktokUrl)}`,
-            );
-            const data = await res.json();
+            const data = await fetchVideoInfoWithRetry(tiktokUrl, 2);
 
             if (data && data.code === 0 && data.data) {
               const d = data.data;
@@ -981,10 +980,8 @@
                 continue;
               }
 
-              const fileName = `tiktok_${Date.now()}_${i + 1}.mp4`;
-              triggerDirectDownload(noWmUrl, fileName);
-              updateBatchItem(i, "success", "Đã gửi tải");
-              successCount++;
+              readyDownloads.push({ index: i, downloadUrl: noWmUrl });
+              updateBatchItem(i, "success", "Đã lấy link tải");
 
               if (!firstVideoRendered) {
                 renderResult(d);
@@ -993,12 +990,21 @@
             } else {
               updateBatchItem(i, "error", "Link lỗi hoặc video riêng tư");
             }
-          } catch {
-            updateBatchItem(i, "error", "Không kết nối được server");
+          } catch (err) {
+            updateBatchItem(i, "error", parseInfoError(err));
           }
 
           // Tránh gửi quá dồn dập nhiều request trong 1 lúc
           if (i < links.length - 1) await sleep(250);
+        }
+
+        // B2: Khi đã có danh sách link tải, kích hoạt tải lần lượt.
+        for (const item of readyDownloads) {
+          const fileName = `tiktok_${Date.now()}_${item.index + 1}.mp4`;
+          triggerDirectDownload(item.downloadUrl, fileName);
+          updateBatchItem(item.index, "success", "Đã gửi tải");
+          successCount++;
+          await sleep(200);
         }
 
         if (!successCount) {
@@ -1140,6 +1146,7 @@
             rawInput
               .split(/\r?\n|,|\s+/)
               .map((v) => v.trim())
+              .map((v) => normalizeTikTokUrl(v))
               .filter(
                 (v) =>
                   v &&
@@ -1149,6 +1156,58 @@
               ),
           ),
         );
+      }
+
+      function normalizeTikTokUrl(raw) {
+        if (!raw) return "";
+        const cleaned = raw.replace(/[)\]}>"'.,;]+$/g, "");
+        try {
+          return new URL(cleaned).href;
+        } catch {
+          return cleaned;
+        }
+      }
+
+      async function fetchVideoInfoWithRetry(tiktokUrl, maxAttempts) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const res = await fetch(
+              `/api/info?url=${encodeURIComponent(tiktokUrl)}`,
+            );
+
+            if (!res.ok) {
+              throw new Error(`HTTP_${res.status}`);
+            }
+
+            const text = await res.text();
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch {
+              throw new Error("INVALID_JSON");
+            }
+
+            return data;
+          } catch (err) {
+            lastError = err;
+            if (attempt < maxAttempts) {
+              await sleep(350 * attempt);
+            }
+          }
+        }
+
+        throw lastError || new Error("UNKNOWN_ERROR");
+      }
+
+      function parseInfoError(err) {
+        const msg = String((err && err.message) || err || "");
+        if (msg.startsWith("HTTP_")) return "Server phản hồi lỗi, thử lại sau";
+        if (msg === "INVALID_JSON") return "API trả dữ liệu không hợp lệ";
+        if (msg.includes("Failed to fetch"))
+          return "Mất kết nối tới server local";
+        return "Không xử lý được link này";
       }
 
       function showBatchStatus(links) {
