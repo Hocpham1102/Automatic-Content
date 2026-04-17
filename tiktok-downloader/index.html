@@ -1,814 +1,1217 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TikTok Downloader – Tải video không logo</title>
-  <meta name="description" content="Tải video TikTok không có logo/watermark miễn phí, chỉ cần dán link và bấm tải." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TikTok Downloader – Tải video không logo</title>
+    <meta
+      name="description"
+      content="Tải video TikTok không có logo/watermark miễn phí, chỉ cần dán link và bấm tải."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    :root {
-      --bg: #0a0a0f;
-      --surface: #13131c;
-      --surface2: #1c1c2e;
-      --border: rgba(255,255,255,0.07);
-      --accent: #ff2d55;
-      --accent2: #fe3f81;
-      --teal: #00d4aa;
-      --purple: #7c5cfc;
-      --text: #f0f0f8;
-      --muted: #888aaa;
-      --radius: 16px;
-      --glow: 0 0 40px rgba(255,45,85,0.3);
-    }
+      :root {
+        --bg: #0a0a0f;
+        --surface: #13131c;
+        --surface2: #1c1c2e;
+        --border: rgba(255, 255, 255, 0.07);
+        --accent: #ff2d55;
+        --accent2: #fe3f81;
+        --teal: #00d4aa;
+        --purple: #7c5cfc;
+        --text: #f0f0f8;
+        --muted: #888aaa;
+        --radius: 16px;
+        --glow: 0 0 40px rgba(255, 45, 85, 0.3);
+      }
 
-    html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow-x: hidden;
-    }
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow-x: hidden;
+      }
 
-    /* ── Animated background ── */
-    .bg-blobs {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.18;
-      animation: float 12s ease-in-out infinite;
-    }
-    .blob-1 { width: 500px; height: 500px; background: var(--accent); top: -200px; left: -150px; animation-delay: 0s; }
-    .blob-2 { width: 400px; height: 400px; background: var(--purple); top: 40%; right: -150px; animation-delay: -4s; }
-    .blob-3 { width: 350px; height: 350px; background: var(--teal); bottom: -100px; left: 30%; animation-delay: -8s; }
+      /* ── Animated background ── */
+      .bg-blobs {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.18;
+        animation: float 12s ease-in-out infinite;
+      }
+      .blob-1 {
+        width: 500px;
+        height: 500px;
+        background: var(--accent);
+        top: -200px;
+        left: -150px;
+        animation-delay: 0s;
+      }
+      .blob-2 {
+        width: 400px;
+        height: 400px;
+        background: var(--purple);
+        top: 40%;
+        right: -150px;
+        animation-delay: -4s;
+      }
+      .blob-3 {
+        width: 350px;
+        height: 350px;
+        background: var(--teal);
+        bottom: -100px;
+        left: 30%;
+        animation-delay: -8s;
+      }
 
-    @keyframes float {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33% { transform: translate(30px, -30px) scale(1.05); }
-      66% { transform: translate(-20px, 20px) scale(0.95); }
-    }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        33% {
+          transform: translate(30px, -30px) scale(1.05);
+        }
+        66% {
+          transform: translate(-20px, 20px) scale(0.95);
+        }
+      }
 
-    /* ── Header ── */
-    header {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 1000px;
-      padding: 32px 24px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+      /* ── Header ── */
+      header {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 1000px;
+        padding: 32px 24px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.3rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.3rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+      }
 
-    .logo-icon {
-      width: 38px; height: 38px;
-      background: linear-gradient(135deg, var(--accent), var(--purple));
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      font-size: 20px;
-    }
+      .logo-icon {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(135deg, var(--accent), var(--purple));
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+      }
 
-    .logo span { color: var(--accent); }
+      .logo span {
+        color: var(--accent);
+      }
 
-    .badge {
-      background: rgba(255,45,85,0.12);
-      border: 1px solid rgba(255,45,85,0.3);
-      color: var(--accent2);
-      font-size: 0.72rem;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 20px;
-      letter-spacing: 0.5px;
-    }
+      .badge {
+        background: rgba(255, 45, 85, 0.12);
+        border: 1px solid rgba(255, 45, 85, 0.3);
+        color: var(--accent2);
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+      }
 
-    /* ── Hero ── */
-    .hero {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 60px 24px 40px;
-      max-width: 700px;
-      width: 100%;
-    }
+      /* ── Hero ── */
+      .hero {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 60px 24px 40px;
+        max-width: 700px;
+        width: 100%;
+      }
 
-    .hero-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(124,92,252,0.12);
-      border: 1px solid rgba(124,92,252,0.3);
-      color: #b79fff;
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 5px 14px;
-      border-radius: 20px;
-      margin-bottom: 20px;
-      letter-spacing: 0.3px;
-    }
+      .hero-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(124, 92, 252, 0.12);
+        border: 1px solid rgba(124, 92, 252, 0.3);
+        color: #b79fff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 5px 14px;
+        border-radius: 20px;
+        margin-bottom: 20px;
+        letter-spacing: 0.3px;
+      }
 
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3.2rem);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -1.5px;
-      background: linear-gradient(135deg, #fff 0%, #ccc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 14px;
-    }
+      .hero h1 {
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        font-weight: 800;
+        line-height: 1.15;
+        letter-spacing: -1.5px;
+        background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 14px;
+      }
 
-    .hero h1 em {
-      font-style: normal;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+      .hero h1 em {
+        font-style: normal;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
 
-    .hero p {
-      color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.7;
-      max-width: 520px;
-      margin: 0 auto 40px;
-    }
+      .hero p {
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.7;
+        max-width: 520px;
+        margin: 0 auto 40px;
+      }
 
-    /* ── Input card ── */
-    .card {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 700px;
-      padding: 0 24px;
-      margin-bottom: 28px;
-    }
+      /* ── Input card ── */
+      .card {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 700px;
+        padding: 0 24px;
+        margin-bottom: 28px;
+      }
 
-    .input-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 6px 6px 6px 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: border-color 0.25s, box-shadow 0.25s;
-    }
+      .input-wrap {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 6px 6px 6px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition:
+          border-color 0.25s,
+          box-shadow 0.25s;
+      }
 
-    .input-wrap:focus-within {
-      border-color: rgba(255,45,85,0.5);
-      box-shadow: 0 0 0 3px rgba(255,45,85,0.1), var(--glow);
-    }
+      .input-wrap:focus-within {
+        border-color: rgba(255, 45, 85, 0.5);
+        box-shadow:
+          0 0 0 3px rgba(255, 45, 85, 0.1),
+          var(--glow);
+      }
 
-    .input-icon { color: var(--muted); font-size: 1.2rem; flex-shrink: 0; }
+      .input-icon {
+        color: var(--muted);
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
 
-    #urlInput {
-      flex: 1;
-      background: none;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-size: 0.95rem;
-      font-family: 'Inter', sans-serif;
-      padding: 12px 0;
-    }
+      #urlInput {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-size: 0.95rem;
+        font-family: "Inter", sans-serif;
+        padding: 12px 0;
+        min-height: 54px;
+        resize: vertical;
+        line-height: 1.5;
+      }
 
-    #urlInput::placeholder { color: var(--muted); }
+      #urlInput::placeholder {
+        color: var(--muted);
+      }
 
-    #pasteBtn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 500;
-      padding: 8px 14px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    #pasteBtn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+      .input-hint {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding-left: 4px;
+      }
 
-    #downloadBtn {
-      background: linear-gradient(135deg, var(--accent), #d4004a);
-      color: #fff;
-      font-size: 0.95rem;
-      font-weight: 700;
-      padding: 14px 28px;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.25s;
-      white-space: nowrap;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      letter-spacing: 0.3px;
-    }
-    #downloadBtn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,45,85,0.4); }
-    #downloadBtn:active { transform: translateY(0); }
-    #downloadBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+      #pasteBtn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 500;
+        padding: 8px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      #pasteBtn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+      }
 
-    /* Spinner */
-    .spinner {
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: none;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+      #downloadBtn {
+        background: linear-gradient(135deg, var(--accent), #d4004a);
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 700;
+        padding: 14px 28px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.25s;
+        white-space: nowrap;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        letter-spacing: 0.3px;
+      }
+      #downloadBtn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(255, 45, 85, 0.4);
+      }
+      #downloadBtn:active {
+        transform: translateY(0);
+      }
+      #downloadBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
 
-    /* ── Info chips ── */
-    .chips {
-      position: relative; z-index: 1;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      padding: 0 24px;
-      margin-bottom: 40px;
-    }
-    .chip {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 7px 14px;
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-    .chip-dot { width: 7px; height: 7px; border-radius: 50%; }
-    .dot-green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-    .dot-blue  { background: #3b82f6; box-shadow: 0 0 6px #3b82f6; }
-    .dot-amber { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+      /* Spinner */
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: none;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
-    /* ── Result card ── */
-    #result {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 700px;
-      padding: 0 24px;
-      margin-bottom: 40px;
-      display: none;
-    }
+      /* ── Info chips ── */
+      .chips {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        padding: 0 24px;
+        margin-bottom: 40px;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 7px 14px;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .chip-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+      }
+      .dot-green {
+        background: #22c55e;
+        box-shadow: 0 0 6px #22c55e;
+      }
+      .dot-blue {
+        background: #3b82f6;
+        box-shadow: 0 0 6px #3b82f6;
+      }
+      .dot-amber {
+        background: #f59e0b;
+        box-shadow: 0 0 6px #f59e0b;
+      }
 
-    .result-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      animation: slideUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
-    }
+      /* ── Batch status ── */
+      #batchStatus {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 700px;
+        padding: 0 24px;
+        margin-bottom: 24px;
+        display: none;
+      }
 
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+      .batch-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+      }
 
-    .result-header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--border);
-    }
+      .batch-title {
+        font-size: 0.88rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #d9d9e7;
+      }
 
-    .status-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 10px #22c55e;
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.3); opacity: 0.7; }
-    }
+      .batch-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 230px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
 
-    .result-header h3 { font-size: 0.95rem; font-weight: 600; }
-    .result-header span { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+      .batch-item {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: var(--surface2);
+        font-size: 0.78rem;
+        color: #d1d3e8;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
 
-    .result-body {
-      display: flex;
-      gap: 20px;
-      padding: 20px;
-    }
+      .batch-state {
+        font-weight: 700;
+        min-width: 72px;
+        color: #9ca3af;
+      }
 
-    @media (max-width: 560px) {
-      .result-body { flex-direction: column; }
-    }
+      .batch-item.success .batch-state {
+        color: #22c55e;
+      }
+      .batch-item.error .batch-state {
+        color: #f87171;
+      }
+      .batch-item.loading .batch-state {
+        color: #f59e0b;
+      }
 
-    .thumb-wrap {
-      flex-shrink: 0;
-      width: 120px;
-      height: 160px;
-      border-radius: 10px;
-      overflow: hidden;
-      background: var(--surface2);
-      position: relative;
-    }
-    .thumb-wrap img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+      .batch-link {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+      }
 
-    .video-info { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+      /* ── Result card ── */
+      #result {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 700px;
+        padding: 0 24px;
+        margin-bottom: 40px;
+        display: none;
+      }
 
-    .video-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
+      .result-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
 
-    .video-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 4px;
-    }
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-    .meta-tag {
-      background: var(--surface2);
-      border-radius: 6px;
-      padding: 3px 9px;
-      font-size: 0.75rem;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
+      .result-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border);
+      }
 
-    .download-btns {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: auto;
-    }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 10px #22c55e;
+        animation: pulse 2s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.3);
+          opacity: 0.7;
+        }
+      }
 
-    .dl-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      border: none;
-      transition: all 0.2s;
-      width: 100%;
-    }
+      .result-header h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .result-header span {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-left: auto;
+      }
 
-    .dl-btn-primary {
-      background: linear-gradient(135deg, var(--accent), #d4004a);
-      color: #fff;
-    }
-    .dl-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,45,85,0.35); }
+      .result-body {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+      }
 
-    .dl-btn-secondary {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-    .dl-btn-secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+      @media (max-width: 560px) {
+        .result-body {
+          flex-direction: column;
+        }
+      }
 
-    .dl-btn-audio {
-      background: rgba(124,92,252,0.12);
-      border: 1px solid rgba(124,92,252,0.3);
-      color: #b79fff;
-    }
-    .dl-btn-audio:hover { background: rgba(124,92,252,0.2); }
+      .thumb-wrap {
+        flex-shrink: 0;
+        width: 120px;
+        height: 160px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface2);
+        position: relative;
+      }
+      .thumb-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
 
-    .dl-btn:disabled {
-      opacity: 0.65;
-      cursor: not-allowed;
-      transform: none !important;
-      filter: none !important;
-      box-shadow: none !important;
-    }
+      .video-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
 
-    .dl-btn .btn-spinner {
-      width: 14px; height: 14px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: currentColor;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: none;
-      flex-shrink: 0;
-    }
-    .dl-btn.loading .btn-spinner { display: inline-block; }
-    .dl-btn.loading .btn-label { opacity: 0.7; }
+      .video-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
 
-    /* ── Error message ── */
-    #error {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 700px;
-      padding: 0 24px;
-      margin-bottom: 24px;
-      display: none;
-    }
+      .video-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+      }
 
-    .error-box {
-      background: rgba(255,45,85,0.08);
-      border: 1px solid rgba(255,45,85,0.25);
-      border-radius: 12px;
-      padding: 14px 18px;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      animation: slideUp 0.3s ease both;
-      font-size: 0.88rem;
-      color: #ff8fa3;
-      line-height: 1.6;
-    }
+      .meta-tag {
+        background: var(--surface2);
+        border-radius: 6px;
+        padding: 3px 9px;
+        font-size: 0.75rem;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
 
-    /* ── How-to steps ── */
-    .steps {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 700px;
-      padding: 0 24px 60px;
-    }
+      .download-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: auto;
+      }
 
-    .steps h2 {
-      text-align: center;
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 24px;
-      color: var(--muted);
-    }
+      .dl-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+        transition: all 0.2s;
+        width: 100%;
+      }
 
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-    }
+      .dl-btn-primary {
+        background: linear-gradient(135deg, var(--accent), #d4004a);
+        color: #fff;
+      }
+      .dl-btn-primary:hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(255, 45, 85, 0.35);
+      }
 
-    .step-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition: border-color 0.2s;
-    }
-    .step-card:hover { border-color: rgba(255,45,85,0.3); }
+      .dl-btn-secondary {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .dl-btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
 
-    .step-num {
-      width: 34px; height: 34px;
-      border-radius: 9px;
-      display: grid;
-      place-items: center;
-      font-size: 0.85rem;
-      font-weight: 700;
-    }
+      .dl-btn-audio {
+        background: rgba(124, 92, 252, 0.12);
+        border: 1px solid rgba(124, 92, 252, 0.3);
+        color: #b79fff;
+      }
+      .dl-btn-audio:hover {
+        background: rgba(124, 92, 252, 0.2);
+      }
 
-    .step-card:nth-child(1) .step-num { background: rgba(255,45,85,0.15); color: var(--accent); }
-    .step-card:nth-child(2) .step-num { background: rgba(124,92,252,0.15); color: #b79fff; }
-    .step-card:nth-child(3) .step-num { background: rgba(0,212,170,0.15); color: var(--teal); }
+      .dl-btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none !important;
+        filter: none !important;
+        box-shadow: none !important;
+      }
 
-    .step-card h4 { font-size: 0.9rem; font-weight: 600; }
-    .step-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+      .dl-btn .btn-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: none;
+        flex-shrink: 0;
+      }
+      .dl-btn.loading .btn-spinner {
+        display: inline-block;
+      }
+      .dl-btn.loading .btn-label {
+        opacity: 0.7;
+      }
 
-    /* ── Footer ── */
-    footer {
-      position: relative; z-index: 1;
-      text-align: center;
-      padding: 20px 24px;
-      font-size: 0.78rem;
-      color: rgba(136,138,170,0.5);
-      border-top: 1px solid var(--border);
-      width: 100%;
-    }
+      /* ── Error message ── */
+      #error {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 700px;
+        padding: 0 24px;
+        margin-bottom: 24px;
+        display: none;
+      }
 
-    /* ── Responsive tweaks ── */
-    @media (max-width: 480px) {
-      .input-wrap { flex-wrap: wrap; }
-      #pasteBtn { order: -1; }
-      #downloadBtn { width: 100%; justify-content: center; }
-    }
-  </style>
-</head>
-<body>
+      .error-box {
+        background: rgba(255, 45, 85, 0.08);
+        border: 1px solid rgba(255, 45, 85, 0.25);
+        border-radius: 12px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        animation: slideUp 0.3s ease both;
+        font-size: 0.88rem;
+        color: #ff8fa3;
+        line-height: 1.6;
+      }
 
-  <!-- Moving background -->
-  <div class="bg-blobs">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-  </div>
+      /* ── How-to steps ── */
+      .steps {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 700px;
+        padding: 0 24px 60px;
+      }
 
-  <!-- Header -->
-  <header>
-    <div class="logo">
-      <div class="logo-icon">🎵</div>
-      Tik<span>Save</span>
+      .steps h2 {
+        text-align: center;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 24px;
+        color: var(--muted);
+      }
+
+      .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+      }
+
+      .step-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: border-color 0.2s;
+      }
+      .step-card:hover {
+        border-color: rgba(255, 45, 85, 0.3);
+      }
+
+      .step-num {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      .step-card:nth-child(1) .step-num {
+        background: rgba(255, 45, 85, 0.15);
+        color: var(--accent);
+      }
+      .step-card:nth-child(2) .step-num {
+        background: rgba(124, 92, 252, 0.15);
+        color: #b79fff;
+      }
+      .step-card:nth-child(3) .step-num {
+        background: rgba(0, 212, 170, 0.15);
+        color: var(--teal);
+      }
+
+      .step-card h4 {
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+      .step-card p {
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      /* ── Footer ── */
+      footer {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 20px 24px;
+        font-size: 0.78rem;
+        color: rgba(136, 138, 170, 0.5);
+        border-top: 1px solid var(--border);
+        width: 100%;
+      }
+
+      /* ── Responsive tweaks ── */
+      @media (max-width: 480px) {
+        .input-wrap {
+          flex-wrap: wrap;
+        }
+        #pasteBtn {
+          order: -1;
+        }
+        #downloadBtn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Moving background -->
+    <div class="bg-blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
     </div>
-    <div class="badge">✦ MIỄN PHÍ</div>
-  </header>
 
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-label">✨ Không cần đăng nhập &nbsp;·&nbsp; Không watermark</div>
-    <h1>Tải TikTok<br /><em>không logo</em> siêu nhanh</h1>
-    <p>Dán link video TikTok vào ô bên dưới và nhấn <strong>Tải ngay</strong> — video sẽ về máy bạn trong vài giây, hoàn toàn sạch logo.</p>
-  </div>
-
-  <!-- Input -->
-  <div class="card">
-    <div class="input-wrap">
-      <span class="input-icon">🔗</span>
-      <input id="urlInput" type="url" placeholder="Dán link TikTok vào đây… (https://www.tiktok.com/...)" autocomplete="off" />
-      <button id="pasteBtn" onclick="pasteLink()">📋 Dán</button>
-      <button id="downloadBtn" onclick="fetchVideo()">
-        <span class="spinner" id="spinner"></span>
-        <span id="btnText">⬇ Tải ngay</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Chips -->
-  <div class="chips">
-    <div class="chip"><span class="chip-dot dot-green"></span>Không watermark</div>
-    <div class="chip"><span class="chip-dot dot-blue"></span>Full HD chất lượng cao</div>
-    <div class="chip"><span class="chip-dot dot-amber"></span>Tải âm thanh MP3</div>
-  </div>
-
-  <!-- Error -->
-  <div id="error">
-    <div class="error-box">
-      <span>⚠️</span>
-      <span id="errorMsg">Có lỗi xảy ra.</span>
-    </div>
-  </div>
-
-  <!-- Result -->
-  <div id="result">
-    <div class="result-card">
-      <div class="result-header">
-        <div class="status-dot"></div>
-        <h3>Tìm thấy video!</h3>
-        <span id="resultMeta"></span>
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <div class="logo-icon">🎵</div>
+        Tik<span>Save</span>
       </div>
-      <div class="result-body">
-        <div class="thumb-wrap">
-          <img id="thumb" src="" alt="Thumbnail" />
+      <div class="badge">✦ MIỄN PHÍ</div>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-label">
+        ✨ Không cần đăng nhập &nbsp;·&nbsp; Không watermark
+      </div>
+      <h1>Tải TikTok<br /><em>không logo</em> siêu nhanh</h1>
+      <p>
+        Dán một hoặc nhiều link TikTok vào ô bên dưới (mỗi dòng một link) rồi
+        nhấn <strong>Tải ngay</strong> để tải hàng loạt trong một lần bấm.
+      </p>
+    </div>
+
+    <!-- Input -->
+    <div class="card">
+      <div class="input-wrap">
+        <span class="input-icon">🔗</span>
+        <textarea
+          id="urlInput"
+          placeholder="Dán nhiều link TikTok tại đây...&#10;Mỗi dòng 1 link&#10;https://www.tiktok.com/..."
+          autocomplete="off"
+        ></textarea>
+        <button id="pasteBtn" onclick="pasteLink()">📋 Dán</button>
+        <button id="downloadBtn" onclick="fetchVideo()">
+          <span class="spinner" id="spinner"></span>
+          <span id="btnText">⬇ Tải ngay</span>
+        </button>
+      </div>
+      <div class="input-hint">
+        Bạn có thể dán nhiều link cùng lúc. Hệ thống sẽ tải lần lượt video không
+        logo.
+      </div>
+    </div>
+
+    <!-- Chips -->
+    <div class="chips">
+      <div class="chip">
+        <span class="chip-dot dot-green"></span>Không watermark
+      </div>
+      <div class="chip">
+        <span class="chip-dot dot-blue"></span>Full HD chất lượng cao
+      </div>
+      <div class="chip">
+        <span class="chip-dot dot-amber"></span>Tải âm thanh MP3
+      </div>
+    </div>
+
+    <!-- Batch status -->
+    <div id="batchStatus">
+      <div class="batch-box">
+        <div class="batch-title" id="batchTitle">Tiến trình tải hàng loạt</div>
+        <ul class="batch-list" id="batchList"></ul>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error">
+      <div class="error-box">
+        <span>⚠️</span>
+        <span id="errorMsg">Có lỗi xảy ra.</span>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result">
+      <div class="result-card">
+        <div class="result-header">
+          <div class="status-dot"></div>
+          <h3>Tìm thấy video!</h3>
+          <span id="resultMeta"></span>
         </div>
-        <div class="video-info">
-          <div class="video-title" id="videoTitle"></div>
-          <div class="video-meta" id="videoMeta"></div>
-          <div class="download-btns">
-            <button id="dlNoWatermark" class="dl-btn dl-btn-primary">
-              <span class="btn-spinner"></span>
-              <span class="btn-label">🎬 Tải video (Không logo)</span>
-            </button>
-            <button id="dlWatermark" class="dl-btn dl-btn-secondary" style="display:none">
-              <span class="btn-spinner"></span>
-              <span class="btn-label">📹 Tải video (Có logo)</span>
-            </button>
-            <button id="dlAudio" class="dl-btn dl-btn-audio" style="display:none">
-              <span class="btn-spinner"></span>
-              <span class="btn-label">🎵 Tải âm thanh (MP3)</span>
-            </button>
+        <div class="result-body">
+          <div class="thumb-wrap">
+            <img id="thumb" src="" alt="Thumbnail" />
+          </div>
+          <div class="video-info">
+            <div class="video-title" id="videoTitle"></div>
+            <div class="video-meta" id="videoMeta"></div>
+            <div class="download-btns">
+              <button id="dlNoWatermark" class="dl-btn dl-btn-primary">
+                <span class="btn-spinner"></span>
+                <span class="btn-label">🎬 Tải video (Không logo)</span>
+              </button>
+              <button
+                id="dlWatermark"
+                class="dl-btn dl-btn-secondary"
+                style="display: none"
+              >
+                <span class="btn-spinner"></span>
+                <span class="btn-label">📹 Tải video (Có logo)</span>
+              </button>
+              <button
+                id="dlAudio"
+                class="dl-btn dl-btn-audio"
+                style="display: none"
+              >
+                <span class="btn-spinner"></span>
+                <span class="btn-label">🎵 Tải âm thanh (MP3)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Steps -->
-  <div class="steps">
-    <h2>Cách sử dụng đơn giản</h2>
-    <div class="steps-grid">
-      <div class="step-card">
-        <div class="step-num">01</div>
-        <h4>Sao chép link</h4>
-        <p>Mở TikTok, nhấn vào video muốn tải → Chia sẻ → Sao chép liên kết.</p>
-      </div>
-      <div class="step-card">
-        <div class="step-num">02</div>
-        <h4>Dán & Tải</h4>
-        <p>Dán link vào ô tìm kiếm, nhấn nút <strong>Tải ngay</strong> và chờ vài giây.</p>
-      </div>
-      <div class="step-card">
-        <div class="step-num">03</div>
-        <h4>Lưu về máy</h4>
-        <p>Nhấn nút tải, video sẽ lưu thẳng vào thư mục Downloads của bạn.</p>
+    <!-- Steps -->
+    <div class="steps">
+      <h2>Cách sử dụng đơn giản</h2>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <h4>Sao chép link</h4>
+          <p>
+            Mở TikTok, nhấn vào video muốn tải → Chia sẻ → Sao chép liên kết.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <h4>Dán & Tải</h4>
+          <p>
+            Dán link vào ô tìm kiếm, nhấn nút <strong>Tải ngay</strong> và chờ
+            vài giây.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <h4>Lưu về máy</h4>
+          <p>Nhấn nút tải, video sẽ lưu thẳng vào thư mục Downloads của bạn.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <footer>
-    &copy; 2025 TikSave &nbsp;·&nbsp; Chỉ dùng cho mục đích cá nhân &nbsp;·&nbsp; Tôn trọng bản quyền nội dung
-  </footer>
+    <footer>
+      &copy; 2025 TikSave &nbsp;·&nbsp; Chỉ dùng cho mục đích cá nhân
+      &nbsp;·&nbsp; Tôn trọng bản quyền nội dung
+    </footer>
 
-  <script>
-    // ── Paste from clipboard ──
-    async function pasteLink() {
-      try {
-        const text = await navigator.clipboard.readText();
-        document.getElementById('urlInput').value = text;
-        document.getElementById('urlInput').focus();
-      } catch {
-        document.getElementById('urlInput').focus();
-        alert('Hãy nhấn Ctrl+V để dán link vào ô nhập liệu.');
-      }
-    }
-
-    // ── Enter key support ──
-    document.getElementById('urlInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') fetchVideo();
-    });
-
-    // ── Fetch video info (qua server local) ──
-    async function fetchVideo() {
-      const tiktokUrl = document.getElementById('urlInput').value.trim();
-      if (!tiktokUrl) { showError('Vui lòng nhập link TikTok!'); return; }
-      if (!tiktokUrl.includes('tiktok.com') && !tiktokUrl.includes('vm.tiktok') && !tiktokUrl.includes('vt.tiktok')) {
-        showError('Link không hợp lệ. Hãy đảm bảo bạn dán đúng link TikTok.');
-        return;
-      }
-
-      setLoading(true);
-      hideError();
-      hideResult();
-
-      try {
-        const res  = await fetch(`/api/info?url=${encodeURIComponent(tiktokUrl)}`);
-        const data = await res.json();
-
-        if (data && data.code === 0 && data.data) {
-          renderResult(data.data);
-        } else {
-          showError('Không thể lấy thông tin video. Kiểm tra link hoặc video có thể bị riêng tư.');
+    <script>
+      // ── Paste from clipboard ──
+      async function pasteLink() {
+        try {
+          const text = await navigator.clipboard.readText();
+          document.getElementById("urlInput").value = text;
+          document.getElementById("urlInput").focus();
+        } catch {
+          document.getElementById("urlInput").focus();
+          alert("Hãy nhấn Ctrl+V để dán link vào ô nhập liệu.");
         }
-      } catch (err) {
-        console.error(err);
-        showError('Không kết nối được với server. Hãy đảm bảo bạn đã chạy: node server.js');
-      } finally {
+      }
+
+      // ── Enter key support ──
+      document.getElementById("urlInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) fetchVideo();
+      });
+
+      // ── Fetch video info (qua server local) ──
+      async function fetchVideo() {
+        const rawInput = document.getElementById("urlInput").value.trim();
+        const links = parseTikTokLinks(rawInput);
+
+        if (!links.length) {
+          showError("Vui lòng nhập ít nhất 1 link TikTok hợp lệ.");
+          return;
+        }
+
+        setLoading(true);
+        hideError();
+        hideResult();
+        showBatchStatus(links);
+
+        let successCount = 0;
+        let firstVideoRendered = false;
+
+        for (let i = 0; i < links.length; i++) {
+          const tiktokUrl = links[i];
+          updateBatchItem(i, "loading", "Đang xử lý");
+
+          try {
+            const res = await fetch(
+              `/api/info?url=${encodeURIComponent(tiktokUrl)}`,
+            );
+            const data = await res.json();
+
+            if (data && data.code === 0 && data.data) {
+              const d = data.data;
+              const noWmUrl =
+                d.play || d.nwm_video_url_HQ || d.nwm_video_url || "";
+
+              if (!noWmUrl) {
+                updateBatchItem(i, "error", "Không có link tải");
+                continue;
+              }
+
+              const fileName = `tiktok_${Date.now()}_${i + 1}.mp4`;
+              triggerDirectDownload(noWmUrl, fileName);
+              updateBatchItem(i, "success", "Đã gửi tải");
+              successCount++;
+
+              if (!firstVideoRendered) {
+                renderResult(d);
+                firstVideoRendered = true;
+              }
+            } else {
+              updateBatchItem(i, "error", "Link lỗi hoặc video riêng tư");
+            }
+          } catch {
+            updateBatchItem(i, "error", "Không kết nối được server");
+          }
+
+          // Tránh gửi quá dồn dập nhiều request trong 1 lúc
+          if (i < links.length - 1) await sleep(250);
+        }
+
+        if (!successCount) {
+          showError(
+            "Không tải được video nào. Vui lòng kiểm tra lại danh sách link.",
+          );
+        } else if (successCount < links.length) {
+          showError(
+            `Đã tải ${successCount}/${links.length} video. Một số link bị lỗi.`,
+          );
+        }
+
         setLoading(false);
       }
-    }
 
-    // ── Render result ──
-    function renderResult(d) {
-      // Thumbnail
-      const thumb = document.getElementById('thumb');
-      thumb.src = d.cover || d.origin_cover || '';
+      // ── Render result ──
+      function renderResult(d) {
+        // Thumbnail
+        const thumb = document.getElementById("thumb");
+        thumb.src = d.cover || d.origin_cover || "";
 
-      // Title
-      const title = document.getElementById('videoTitle');
-      title.textContent = d.title || 'Video TikTok';
+        // Title
+        const title = document.getElementById("videoTitle");
+        title.textContent = d.title || "Video TikTok";
 
-      // Meta
-      const meta = document.getElementById('videoMeta');
-      meta.innerHTML = '';
-      if (d.author?.nickname) addMeta(meta, '👤', d.author.nickname);
-      if (d.duration) addMeta(meta, '⏱', formatDuration(d.duration));
-      if (d.play_count) addMeta(meta, '▶', fmtNum(d.play_count) + ' lượt xem');
-      if (d.digg_count) addMeta(meta, '❤️', fmtNum(d.digg_count));
+        // Meta
+        const meta = document.getElementById("videoMeta");
+        meta.innerHTML = "";
+        if (d.author?.nickname) addMeta(meta, "👤", d.author.nickname);
+        if (d.duration) addMeta(meta, "⏱", formatDuration(d.duration));
+        if (d.play_count)
+          addMeta(meta, "▶", fmtNum(d.play_count) + " lượt xem");
+        if (d.digg_count) addMeta(meta, "❤️", fmtNum(d.digg_count));
 
-      // Result header meta
-      document.getElementById('resultMeta').textContent = new Date().toLocaleTimeString('vi-VN');
+        // Result header meta
+        document.getElementById("resultMeta").textContent =
+          new Date().toLocaleTimeString("vi-VN");
 
-      // Download links — no watermark (play), with watermark (wmplay), music
-      const dlNW = document.getElementById('dlNoWatermark');
-      const dlW  = document.getElementById('dlWatermark');
-      const dlA  = document.getElementById('dlAudio');
+        // Download links — no watermark (play), with watermark (wmplay), music
+        const dlNW = document.getElementById("dlNoWatermark");
+        const dlW = document.getElementById("dlWatermark");
+        const dlA = document.getElementById("dlAudio");
 
-      const noWmUrl = d.play || d.nwm_video_url_HQ || d.nwm_video_url || '';
-      const wmUrl   = d.wmplay || d.video_url || '';
-      const audUrl  = d.music || d.music_info?.play || '';
+        const noWmUrl = d.play || d.nwm_video_url_HQ || d.nwm_video_url || "";
+        const wmUrl = d.wmplay || d.video_url || "";
+        const audUrl = d.music || d.music_info?.play || "";
 
-      dlNW.onclick = () => triggerDownload(dlNW, noWmUrl, `tiktok_${Date.now()}.mp4`);
+        dlNW.onclick = () =>
+          triggerDownload(dlNW, noWmUrl, `tiktok_${Date.now()}.mp4`);
 
-      if (wmUrl && wmUrl !== noWmUrl) {
-        dlW.onclick = () => triggerDownload(dlW, wmUrl, `tiktok_logo_${Date.now()}.mp4`);
-        dlW.style.display = 'flex';
-      } else {
-        dlW.style.display = 'none';
+        if (wmUrl && wmUrl !== noWmUrl) {
+          dlW.onclick = () =>
+            triggerDownload(dlW, wmUrl, `tiktok_logo_${Date.now()}.mp4`);
+          dlW.style.display = "flex";
+        } else {
+          dlW.style.display = "none";
+        }
+
+        if (audUrl) {
+          dlA.onclick = () =>
+            triggerDownload(dlA, audUrl, `tiktok_audio_${Date.now()}.mp3`);
+          dlA.style.display = "flex";
+        } else {
+          dlA.style.display = "none";
+        }
+
+        document.getElementById("result").style.display = "block";
       }
 
-      if (audUrl) {
-        dlA.onclick = () => triggerDownload(dlA, audUrl, `tiktok_audio_${Date.now()}.mp3`);
-        dlA.style.display = 'flex';
-      } else {
-        dlA.style.display = 'none';
+      // ── Force download qua server local ──
+      async function triggerDownload(btn, videoUrl, filename) {
+        if (btn.disabled) return;
+
+        btn.disabled = true;
+        btn.classList.add("loading");
+        const label = btn.querySelector(".btn-label");
+        const origText = label.textContent;
+        label.textContent = "Đang tải file…";
+
+        try {
+          // Gọi /api/download trên server local – server sẽ pipe video về
+          // với header Content-Disposition: attachment nên trình duyệt tự lưu file
+          const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+
+          const a = document.createElement("a");
+          a.href = dlUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          label.textContent = "✅ Đang tải xuống…";
+          setTimeout(() => {
+            label.textContent = origText;
+          }, 4000);
+        } catch (err) {
+          console.error(err);
+          label.textContent = origText;
+          showError("Tải file thất bại. Thử lại sau.");
+        } finally {
+          btn.disabled = false;
+          btn.classList.remove("loading");
+        }
       }
 
-      document.getElementById('result').style.display = 'block';
-    }
-
-    // ── Force download qua server local ──
-    async function triggerDownload(btn, videoUrl, filename) {
-      if (btn.disabled) return;
-
-      btn.disabled = true;
-      btn.classList.add('loading');
-      const label = btn.querySelector('.btn-label');
-      const origText = label.textContent;
-      label.textContent = 'Đang tải file…';
-
-      try {
-        // Gọi /api/download trên server local – server sẽ pipe video về
-        // với header Content-Disposition: attachment nên trình duyệt tự lưu file
+      function triggerDirectDownload(videoUrl, filename) {
         const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
-
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = dlUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
-        label.textContent = '✅ Đang tải xuống…';
-        setTimeout(() => { label.textContent = origText; }, 4000);
-      } catch (err) {
-        console.error(err);
-        label.textContent = origText;
-        showError('Tải file thất bại. Thử lại sau.');
-      } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
       }
-    }
 
-    // ── Helpers ──
-    function addMeta(container, icon, text) {
-      const el = document.createElement('div');
-      el.className = 'meta-tag';
-      el.innerHTML = `<span>${icon}</span>${text}`;
-      container.appendChild(el);
-    }
+      // ── Helpers ──
+      function addMeta(container, icon, text) {
+        const el = document.createElement("div");
+        el.className = "meta-tag";
+        el.innerHTML = `<span>${icon}</span>${text}`;
+        container.appendChild(el);
+      }
 
-    function formatDuration(sec) {
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return `${m}:${String(s).padStart(2,'0')}`;
-    }
+      function formatDuration(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${String(s).padStart(2, "0")}`;
+      }
 
-    function fmtNum(n) {
-      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-      return n;
-    }
+      function fmtNum(n) {
+        if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+        return n;
+      }
 
-    function setLoading(on) {
-      const btn  = document.getElementById('downloadBtn');
-      const spin = document.getElementById('spinner');
-      const txt  = document.getElementById('btnText');
-      btn.disabled = on;
-      spin.style.display = on ? 'block' : 'none';
-      txt.textContent = on ? 'Đang tải…' : '⬇ Tải ngay';
-    }
+      function parseTikTokLinks(rawInput) {
+        return Array.from(
+          new Set(
+            rawInput
+              .split(/\r?\n|,|\s+/)
+              .map((v) => v.trim())
+              .filter(
+                (v) =>
+                  v &&
+                  (v.includes("tiktok.com") ||
+                    v.includes("vm.tiktok") ||
+                    v.includes("vt.tiktok")),
+              ),
+          ),
+        );
+      }
 
-    function showError(msg) {
-      document.getElementById('errorMsg').textContent = msg;
-      document.getElementById('error').style.display = 'block';
-    }
+      function showBatchStatus(links) {
+        const box = document.getElementById("batchStatus");
+        const list = document.getElementById("batchList");
+        const title = document.getElementById("batchTitle");
+        title.textContent = `Tiến trình tải hàng loạt (${links.length} link)`;
+        list.innerHTML = "";
 
-    function hideError() { document.getElementById('error').style.display = 'none'; }
-    function hideResult() { document.getElementById('result').style.display = 'none'; }
-  </script>
-</body>
+        links.forEach((link, idx) => {
+          const item = document.createElement("li");
+          item.className = "batch-item";
+          item.id = `batch-item-${idx}`;
+          item.innerHTML = `<span class="batch-state">Sẵn sàng</span><span class="batch-link">${escapeHtml(link)}</span>`;
+          list.appendChild(item);
+        });
+
+        box.style.display = "block";
+      }
+
+      function updateBatchItem(index, type, stateText) {
+        const item = document.getElementById(`batch-item-${index}`);
+        if (!item) return;
+        item.classList.remove("success", "error", "loading");
+        item.classList.add(type);
+
+        const state = item.querySelector(".batch-state");
+        if (state) state.textContent = stateText;
+      }
+
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function setLoading(on) {
+        const btn = document.getElementById("downloadBtn");
+        const spin = document.getElementById("spinner");
+        const txt = document.getElementById("btnText");
+        btn.disabled = on;
+        spin.style.display = on ? "block" : "none";
+        txt.textContent = on ? "Đang tải…" : "⬇ Tải ngay";
+      }
+
+      function showError(msg) {
+        document.getElementById("errorMsg").textContent = msg;
+        document.getElementById("error").style.display = "block";
+      }
+
+      function hideError() {
+        document.getElementById("error").style.display = "none";
+      }
+      function hideResult() {
+        document.getElementById("result").style.display = "none";
+      }
+    </script>
+  </body>
 </html>
