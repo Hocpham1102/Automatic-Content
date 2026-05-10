@@ -1052,7 +1052,8 @@
           "";
 
         const title = document.getElementById("videoTitle");
-        const isImagePost = assets.length > 1 || assets[0]?.kind === "image";
+        // Only consider as image post if primary asset is image (or multiple images, not video quality levels)
+        const isImagePost = assets[0]?.kind === "image" && (assets.length > 1 && assets.every(a => a.kind === "image"));
         title.textContent =
           d.title || (isImagePost ? "Album ảnh" : `Nội dung ${platformLabel}`);
 
@@ -1401,20 +1402,27 @@
 
         if (platform === "douyin") {
           const douyinPayload = payload?.result || payload;
-          const links = Array.isArray(douyinPayload?.links)
-            ? douyinPayload.links
-            : [];
+          // Douyin response has links in data.links or directly in payload.links
+          const links = Array.isArray(douyinPayload?.data?.links)
+            ? douyinPayload.data.links
+            : Array.isArray(douyinPayload?.links)
+              ? douyinPayload.links
+              : [];
           if (links.length) {
+            // Check if links are video quality levels (have quality field) or images
+            const isVideoQuality = links.some(item => item?.quality);
+            
             links.forEach((item, index) => {
               if (!item?.url) return;
+              const kind = isVideoQuality ? "video" : (item?.type === "image" ? "image" : "video");
               assets.push({
-                kind: links.length > 1 ? "image" : "video",
+                kind,
                 url: item.url,
                 filename:
-                  links.length > 1
+                  kind === "image"
                     ? buildImageFilename(d, index, item.url)
                     : buildVideoFilename(d, sourceUrl),
-                previewUrl: d.thumbnail || d.cover || item.url,
+                previewUrl: payload?.data?.thumbnail || d.thumbnail || d.cover || item.url,
               });
             });
           }
