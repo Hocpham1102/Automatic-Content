@@ -9,5 +9,10 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "btch-downloader": "^6.0.27",
+    "ruhend-scraper": "^10.0.3",
+    "snapsave-media-downloader": "^2.4.0"
   }
 }

@@ -9,6 +9,19 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
+const { igdl, ttdl, fbdown, douyin, threads } = require("btch-downloader");
+
+let snapsaveLoader;
+
+async function getSnapsave() {
+  if (!snapsaveLoader) {
+    snapsaveLoader = import("snapsave-media-downloader").then(
+      (mod) => mod.snapsave,
+    );
+  }
+
+  return snapsaveLoader;
+}
 
 const PORT = process.env.PORT || 3000;
 const HTML_FILE = path.join(__dirname, "index.html");
@@ -24,12 +37,13 @@ const MIME = {
 // ── Fetch helper (wraps https.get với redirect support) ──────
 function httpsGet(targetUrl, options = {}) {
   return new Promise((resolve, reject) => {
+    const referer = options.headers?.Referer || options.headers?.referer;
     const reqOptions = {
       ...options,
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Referer: "https://www.tiktok.com/",
+        Referer: referer || "https://www.tiktok.com/",
         ...(options.headers || {}),
       },
     };
@@ -55,9 +69,9 @@ function httpsGet(targetUrl, options = {}) {
 }
 
 // ── Parse JSON from https ────────────────────────────────────
-function fetchJson(targetUrl) {
+function fetchJson(targetUrl, referer) {
   return new Promise((resolve, reject) => {
-    httpsGet(targetUrl)
+    httpsGet(targetUrl, referer ? { headers: { Referer: referer } } : {})
       .then((res) => {
         let body = "";
         res.on("data", (chunk) => (body += chunk));
@@ -85,6 +99,28 @@ function sendJson(res, data, status = 200) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getPlatform(urlString = "") {
+  try {
+    const host = new URL(urlString).hostname.toLowerCase();
+    if (host.includes("instagram.com")) return "instagram";
+    if (host.includes("facebook.com") || host.includes("fb.watch"))
+      return "facebook";
+    if (host.includes("threads.net")) return "threads";
+    if (host.includes("douyin") || host.includes("iesdouyin")) return "douyin";
+    if (
+      host.includes("tiktok.com") ||
+      host.includes("vm.tiktok") ||
+      host.includes("vt.tiktok")
+    ) {
+      return "tiktok";
+    }
+  } catch {
+    // Fall back to auto detection below.
+  }
+
+  return "unknown";
 }
 
 async function downloadUpstream(videoUrl, maxAttempts = 3) {
@@ -143,13 +179,48 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/info?url=<tiktok_url> ───────────────────────
   if (pathname === "/api/info") {
-    const tiktokUrl = query.url;
-    if (!tiktokUrl) return sendJson(res, { error: "Missing url param" }, 400);
+    const mediaUrl = query.url;
+    if (!mediaUrl) return sendJson(res, { error: "Missing url param" }, 400);
 
     try {
-      const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(tiktokUrl)}&hd=1`;
-      const data = await fetchJson(apiUrl);
-      sendJson(res, data);
+      const platform = getPlatform(mediaUrl);
+      let data;
+
+      if (
+        platform === "instagram" ||
+        platform === "facebook" ||
+        platform === "tiktok"
+      ) {
+        const snapsave = await getSnapsave();
+        const raw = await snapsave(mediaUrl);
+
+        if (raw && raw.success && raw.data) {
+          data = {
+            platform,
+            developer: raw.developer || "snapsave-media-downloader",
+            status: true,
+            title: raw.data.description || raw.data.title || "",
+            thumbnail: raw.data.preview || "",
+            media: Array.isArray(raw.data.media) ? raw.data.media : [],
+          };
+        } else {
+          data = {
+            platform,
+            developer: raw?.developer || "snapsave-media-downloader",
+            status: false,
+            message: raw?.message || "No results found",
+            media: [],
+          };
+        }
+      } else if (platform === "threads") {
+        data = await threads(mediaUrl);
+      } else if (platform === "douyin") {
+        data = await douyin(mediaUrl);
+      } else {
+        data = await ttdl(mediaUrl);
+      }
+
+      sendJson(res, { platform, ...data });
     } catch (err) {
       sendJson(res, { error: err.message }, 500);
     }

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: automatic-content
+    env: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true

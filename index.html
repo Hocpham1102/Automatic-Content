@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TikTok Downloader – Tải video không logo</title>
+    <title>Social Downloader – Tải video và ảnh</title>
     <meta
       name="description"
-      content="Tải video TikTok không có logo/watermark miễn phí, chỉ cần dán link và bấm tải."
+      content="Tải video và ảnh từ Instagram, Facebook, Threads, TikTok và Douyin miễn phí, chỉ cần dán link và bấm tải."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
@@ -794,10 +794,14 @@
       <div class="hero-label">
         ✨ Không cần đăng nhập &nbsp;·&nbsp; Không watermark
       </div>
-      <h1>Tải TikTok<br /><em>không logo</em> siêu nhanh</h1>
+      <h1>
+        Tải Instagram, Facebook, Threads,<br /><em>TikTok và Douyin</em> siêu
+        nhanh
+      </h1>
       <p>
-        Dán một hoặc nhiều link TikTok vào ô bên dưới (mỗi dòng một link) rồi
-        nhấn <strong>Tải ngay</strong> để tải hàng loạt trong một lần bấm.
+        Dán một hoặc nhiều link Instagram, Facebook, Threads, TikTok hoặc Douyin
+        vào ô bên dưới (mỗi dòng một link) rồi nhấn <strong>Tải ngay</strong> để
+        tải hàng loạt trong một lần bấm.
       </p>
     </div>
 
@@ -807,7 +811,7 @@
         <span class="input-icon">🔗</span>
         <textarea
           id="urlInput"
-          placeholder="Dán nhiều link TikTok tại đây...&#10;Mỗi dòng 1 link&#10;https://www.tiktok.com/..."
+          placeholder="Dán nhiều link Instagram / Facebook / Threads / TikTok / Douyin tại đây...&#10;Mỗi dòng 1 link"
           autocomplete="off"
         ></textarea>
         <button id="pasteBtn" onclick="pasteLink()">📋 Dán</button>
@@ -817,8 +821,8 @@
         </button>
       </div>
       <div class="input-hint">
-        Bạn có thể dán nhiều link cùng lúc. Hệ thống sẽ tải lần lượt video không
-        logo.
+        Bạn có thể dán nhiều link cùng lúc. Hệ thống sẽ tải lần lượt video hoặc
+        album ảnh tùy theo link.
       </div>
     </div>
 
@@ -828,7 +832,7 @@
         <span class="chip-dot dot-green"></span>Không watermark
       </div>
       <div class="chip">
-        <span class="chip-dot dot-blue"></span>Full HD chất lượng cao
+        <span class="chip-dot dot-blue"></span>Full HD / ảnh gốc
       </div>
       <div class="chip">
         <span class="chip-dot dot-amber"></span>Tải âm thanh MP3
@@ -901,7 +905,8 @@
           <div class="step-num">01</div>
           <h4>Sao chép link</h4>
           <p>
-            Mở TikTok, nhấn vào video muốn tải → Chia sẻ → Sao chép liên kết.
+            Mở Instagram, Facebook, Threads, TikTok hoặc Douyin, nhấn vào nội
+            dung muốn tải → Chia sẻ → Sao chép liên kết.
           </p>
         </div>
         <div class="step-card">
@@ -946,10 +951,12 @@
       // ── Fetch video info (qua server local) ──
       async function fetchVideo() {
         const rawInput = document.getElementById("urlInput").value.trim();
-        const links = parseTikTokLinks(rawInput);
+        const links = parseSupportedLinks(rawInput);
 
         if (!links.length) {
-          showError("Vui lòng nhập ít nhất 1 link TikTok hợp lệ.");
+          showError(
+            "Vui lòng nhập ít nhất 1 link Instagram, Facebook, Threads, TikTok hoặc Douyin hợp lệ.",
+          );
           return;
         }
 
@@ -962,29 +969,27 @@
         let firstVideoRendered = false;
         const readyDownloads = [];
 
-        // B1: Lấy link tải cho toàn bộ URL trước.
+        // B1: Lấy danh sách file tải cho toàn bộ URL trước.
         for (let i = 0; i < links.length; i++) {
-          const tiktokUrl = links[i];
+          const mediaUrl = links[i];
           updateBatchItem(i, "loading", "Đang xử lý");
 
           try {
-            const data = await fetchVideoInfoWithRetry(tiktokUrl, 2);
+            const data = await fetchMediaInfoWithRetry(mediaUrl, 2);
 
-            if (data && data.code === 0 && data.data) {
-              const d = data.data;
-              const noWmUrl =
-                d.play || d.nwm_video_url_HQ || d.nwm_video_url || "";
+            if (data && data.status !== false) {
+              const assets = extractDownloadAssets(data, mediaUrl);
 
-              if (!noWmUrl) {
+              if (!assets.length) {
                 updateBatchItem(i, "error", "Không có link tải");
                 continue;
               }
 
-              readyDownloads.push({ index: i, downloadUrl: noWmUrl });
+              readyDownloads.push({ index: i, assets });
               updateBatchItem(i, "success", "Đã lấy link tải");
 
               if (!firstVideoRendered) {
-                renderResult(d);
+                renderResult(data, mediaUrl);
                 firstVideoRendered = true;
               }
             } else {
@@ -998,12 +1003,11 @@
           if (i < links.length - 1) await sleep(250);
         }
 
-        // B2: Khi đã có danh sách link tải, kích hoạt tải lần lượt.
+        // B2: Khi đã có danh sách file tải, kích hoạt tải lần lượt.
         for (const item of readyDownloads) {
-          const fileName = `tiktok_${Date.now()}_${item.index + 1}.mp4`;
           try {
             updateBatchItem(item.index, "loading", "Đang tải file");
-            await downloadViaBlobWithRetry(item.downloadUrl, fileName, 3);
+            await downloadAssetGroupWithRetry(item.assets, 3);
             updateBatchItem(item.index, "success", "Đã tải xong");
             successCount++;
           } catch (err) {
@@ -1028,41 +1032,61 @@
       }
 
       // ── Render result ──
-      function renderResult(d) {
-        // Thumbnail
+      function renderResult(d, sourceUrl) {
         const thumb = document.getElementById("thumb");
-        thumb.src = d.cover || d.origin_cover || "";
-
-        // Title
-        const title = document.getElementById("videoTitle");
-        title.textContent = d.title || "Video TikTok";
-
-        // Meta
         const meta = document.getElementById("videoMeta");
+        const dlNW = document.getElementById("dlNoWatermark");
+        const dlW = document.getElementById("dlWatermark");
+        const dlA = document.getElementById("dlAudio");
+        const assets = extractDownloadAssets(d, sourceUrl);
+        const primaryAsset = assets[0] || null;
+        const platformLabel = formatPlatformLabel(
+          d.platform || detectPlatform(sourceUrl),
+        );
+
+        thumb.src =
+          d.thumbnail ||
+          d.cover ||
+          d.origin_cover ||
+          primaryAsset?.previewUrl ||
+          "";
+
+        const title = document.getElementById("videoTitle");
+        const isImagePost = assets.length > 1 || assets[0]?.kind === "image";
+        title.textContent =
+          d.title || (isImagePost ? "Album ảnh" : `Nội dung ${platformLabel}`);
+
         meta.innerHTML = "";
         if (d.author?.nickname) addMeta(meta, "👤", d.author.nickname);
+        if (d.author) addMeta(meta, "🏷", platformLabel);
         if (d.duration) addMeta(meta, "⏱", formatDuration(d.duration));
         if (d.play_count)
           addMeta(meta, "▶", fmtNum(d.play_count) + " lượt xem");
         if (d.digg_count) addMeta(meta, "❤️", fmtNum(d.digg_count));
+        if (isImagePost) addMeta(meta, "🖼", `${assets.length} ảnh`);
+        if (!isImagePost && assets.length)
+          addMeta(meta, "🎬", `${assets.length} tệp media`);
 
-        // Result header meta
         document.getElementById("resultMeta").textContent =
           new Date().toLocaleTimeString("vi-VN");
 
-        // Download links — no watermark (play), with watermark (wmplay), music
-        const dlNW = document.getElementById("dlNoWatermark");
-        const dlW = document.getElementById("dlWatermark");
-        const dlA = document.getElementById("dlAudio");
+        if (primaryAsset) {
+          dlNW.onclick = () =>
+            triggerDownloadGroup(
+              dlNW,
+              assets,
+              buildPrimaryFilename(d, assets, sourceUrl),
+            );
+          dlNW.style.display = "flex";
+          dlNW.querySelector(".btn-label").textContent = isImagePost
+            ? `📷 Tải ảnh (${assets.length})`
+            : "🎬 Tải video (Không logo)";
+        } else {
+          dlNW.style.display = "none";
+        }
 
-        const noWmUrl = d.play || d.nwm_video_url_HQ || d.nwm_video_url || "";
         const wmUrl = d.wmplay || d.video_url || "";
-        const audUrl = d.music || d.music_info?.play || "";
-
-        dlNW.onclick = () =>
-          triggerDownload(dlNW, noWmUrl, `tiktok_${Date.now()}.mp4`);
-
-        if (wmUrl && wmUrl !== noWmUrl) {
+        if (!isImagePost && wmUrl && wmUrl !== primaryAsset?.url) {
           dlW.onclick = () =>
             triggerDownload(dlW, wmUrl, `tiktok_logo_${Date.now()}.mp4`);
           dlW.style.display = "flex";
@@ -1070,7 +1094,8 @@
           dlW.style.display = "none";
         }
 
-        if (audUrl) {
+        const audUrl = d.music || d.music_info?.play || "";
+        if (!isImagePost && audUrl) {
           dlA.onclick = () =>
             triggerDownload(dlA, audUrl, `tiktok_audio_${Date.now()}.mp3`);
           dlA.style.display = "flex";
@@ -1115,6 +1140,27 @@
           btn.disabled = false;
           btn.classList.remove("loading");
         }
+      }
+
+      async function downloadAssetGroupWithRetry(assets, maxAttempts) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            for (const asset of assets) {
+              await downloadViaBlob(asset.url, asset.filename);
+              await sleep(250);
+            }
+            return;
+          } catch (err) {
+            lastError = err;
+            if (attempt < maxAttempts) {
+              await sleep(600 * attempt);
+            }
+          }
+        }
+
+        throw lastError || new Error("DOWNLOAD_FAILED");
       }
 
       async function downloadViaBlobWithRetry(videoUrl, filename, maxAttempts) {
@@ -1188,25 +1234,64 @@
         return n;
       }
 
-      function parseTikTokLinks(rawInput) {
+      function parseSupportedLinks(rawInput) {
         return Array.from(
           new Set(
             rawInput
               .split(/\r?\n|,|\s+/)
               .map((v) => v.trim())
-              .map((v) => normalizeTikTokUrl(v))
+              .map((v) => normalizeMediaUrl(v))
               .filter(
                 (v) =>
                   v &&
                   (v.includes("tiktok.com") ||
                     v.includes("vm.tiktok") ||
-                    v.includes("vt.tiktok")),
+                    v.includes("vt.tiktok") ||
+                    v.includes("douyin.com") ||
+                    v.includes("iesdouyin.com") ||
+                    v.includes("v.douyin.com") ||
+                    v.includes("instagram.com") ||
+                    v.includes("facebook.com") ||
+                    v.includes("fb.watch") ||
+                    v.includes("threads.net")),
               ),
           ),
         );
       }
 
-      function normalizeTikTokUrl(raw) {
+      function detectPlatform(inputValue) {
+        try {
+          const host = new URL(inputValue).hostname.toLowerCase();
+          if (host.includes("instagram.com")) return "instagram";
+          if (host.includes("facebook.com") || host.includes("fb.watch"))
+            return "facebook";
+          if (host.includes("threads.net")) return "threads";
+          if (host.includes("douyin") || host.includes("iesdouyin"))
+            return "douyin";
+          if (
+            host.includes("tiktok.com") ||
+            host.includes("vm.tiktok") ||
+            host.includes("vt.tiktok")
+          ) {
+            return "tiktok";
+          }
+        } catch {
+          // Fall back to payload inspection.
+        }
+
+        return "unknown";
+      }
+
+      function formatPlatformLabel(platform) {
+        if (platform === "instagram") return "Instagram";
+        if (platform === "facebook") return "Facebook";
+        if (platform === "threads") return "Threads";
+        if (platform === "douyin") return "Douyin";
+        if (platform === "tiktok") return "TikTok";
+        return "nền tảng này";
+      }
+
+      function normalizeMediaUrl(raw) {
         if (!raw) return "";
         const cleaned = raw.replace(/[)\]}>"'.,;]+$/g, "");
         try {
@@ -1216,13 +1301,255 @@
         }
       }
 
-      async function fetchVideoInfoWithRetry(tiktokUrl, maxAttempts) {
+      function extractDownloadAssets(d, sourceUrl = "") {
+        const assets = [];
+        const platform = d.platform || detectPlatform(sourceUrl);
+        const payload = d.result ?? d.data ?? d;
+
+        const normalizedMedia = Array.isArray(d.media)
+          ? d.media
+          : Array.isArray(payload?.media)
+            ? payload.media
+            : [];
+
+        if (normalizedMedia.length) {
+          normalizedMedia.forEach((item, index) => {
+            const mediaType = String(item?.type || "video").toLowerCase();
+            const mediaUrl = item?.url || item?.download || "";
+            if (!mediaUrl) return;
+
+            assets.push({
+              kind: mediaType === "image" ? "image" : "video",
+              url: mediaUrl,
+              filename:
+                mediaType === "image"
+                  ? buildImageFilename(d, index, mediaUrl)
+                  : buildVideoFilename(d, sourceUrl),
+              previewUrl: item?.thumbnail || item?.preview || mediaUrl,
+            });
+          });
+
+          return assets;
+        }
+
+        if (platform === "instagram") {
+          const imageItems = Array.isArray(payload?.result)
+            ? payload.result
+            : Array.isArray(d.result)
+              ? d.result
+              : [];
+          imageItems.forEach((item, index) => {
+            const imageUrl =
+              typeof item === "string"
+                ? item
+                : item?.url ||
+                  item?.thumbnail ||
+                  item?.image ||
+                  item?.src ||
+                  "";
+            if (!imageUrl) return;
+            assets.push({
+              kind: "image",
+              url: imageUrl,
+              filename: buildImageFilename(d, index, imageUrl),
+              previewUrl:
+                typeof item === "string"
+                  ? imageUrl
+                  : item?.thumbnail || item?.image || item?.src || imageUrl,
+            });
+          });
+          return assets;
+        }
+
+        if (platform === "facebook") {
+          const videoUrl =
+            payload?.HD ||
+            payload?.Normal_video ||
+            d.HD ||
+            d.Normal_video ||
+            "";
+          if (videoUrl) {
+            assets.push({
+              kind: "video",
+              url: videoUrl,
+              filename: buildVideoFilename(d, sourceUrl),
+              previewUrl: d.thumbnail || d.cover || videoUrl,
+            });
+          }
+          return assets;
+        }
+
+        if (platform === "threads") {
+          const threadPayload = payload?.result || payload;
+          if (threadPayload?.type === "image" && threadPayload.image) {
+            assets.push({
+              kind: "image",
+              url: threadPayload.image,
+              filename: buildImageFilename(d, 0, threadPayload.image),
+              previewUrl: threadPayload.image,
+            });
+          } else if (threadPayload?.type === "video" && threadPayload.video) {
+            assets.push({
+              kind: "video",
+              url: threadPayload.video,
+              filename: buildVideoFilename(d, sourceUrl),
+              previewUrl: threadPayload.image || threadPayload.video,
+            });
+          }
+          return assets;
+        }
+
+        if (platform === "douyin") {
+          const douyinPayload = payload?.result || payload;
+          const links = Array.isArray(douyinPayload?.links)
+            ? douyinPayload.links
+            : [];
+          if (links.length) {
+            links.forEach((item, index) => {
+              if (!item?.url) return;
+              assets.push({
+                kind: links.length > 1 ? "image" : "video",
+                url: item.url,
+                filename:
+                  links.length > 1
+                    ? buildImageFilename(d, index, item.url)
+                    : buildVideoFilename(d, sourceUrl),
+                previewUrl: d.thumbnail || d.cover || item.url,
+              });
+            });
+          }
+          return assets;
+        }
+
+        if (platform === "tiktok") {
+          const tiktokVideo =
+            payload?.video?.[0] ||
+            payload?.play ||
+            payload?.wmplay ||
+            payload?.video_url ||
+            "";
+          if (tiktokVideo) {
+            assets.push({
+              kind: "video",
+              url: tiktokVideo,
+              filename: buildVideoFilename(d, sourceUrl),
+              previewUrl:
+                d.thumbnail || d.cover || d.origin_cover || tiktokVideo,
+            });
+          }
+
+          if (Array.isArray(payload?.audio) && payload.audio.length) {
+            return assets;
+          }
+
+          return assets;
+        }
+
+        const videoUrl =
+          payload?.video?.[0] ||
+          payload?.play ||
+          payload?.nwm_video_url_HQ ||
+          payload?.nwm_video_url ||
+          payload?.wmplay ||
+          payload?.video_url ||
+          payload?.HD ||
+          payload?.Normal_video ||
+          payload?.mp4 ||
+          "";
+        const imageUrls = normalizeImageList(
+          payload?.images ||
+            payload?.imagesHD ||
+            payload?.origin_images ||
+            payload?.image_urls ||
+            payload?.image_list ||
+            payload?.result ||
+            [],
+        );
+
+        if (imageUrls.length) {
+          imageUrls.forEach((imageUrl, index) => {
+            assets.push({
+              kind: "image",
+              url: imageUrl,
+              filename: buildImageFilename(d, index, imageUrl),
+              previewUrl: imageUrl,
+            });
+          });
+          return assets;
+        }
+
+        if (videoUrl) {
+          assets.push({
+            kind: "video",
+            url: videoUrl,
+            filename: buildVideoFilename(d, sourceUrl),
+            previewUrl: d.thumbnail || d.cover || d.origin_cover || videoUrl,
+          });
+        }
+
+        return assets;
+      }
+
+      function normalizeImageList(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+          return value
+            .map((item) =>
+              typeof item === "string" ? item : item?.url || item?.src || "",
+            )
+            .filter(Boolean);
+        }
+
+        return [];
+      }
+
+      function buildPrimaryFilename(d, assets, sourceUrl = "") {
+        return assets[0]?.kind === "image"
+          ? buildImageFilename(d, 0, assets[0].url)
+          : buildVideoFilename(d, sourceUrl);
+      }
+
+      function buildVideoFilename(d, sourceUrl = "") {
+        const platform = d.platform || detectPlatform(sourceUrl);
+        return `${platform}_${slugify(d.title) || Date.now()}.mp4`;
+      }
+
+      function buildImageFilename(d, index, imageUrl) {
+        const ext = inferImageExtension(imageUrl);
+        const platform = d.platform || "media";
+        return `${platform}_${slugify(d.title) || Date.now()}_${index + 1}.${ext}`;
+      }
+
+      function inferImageExtension(imageUrl) {
+        try {
+          const pathname = new URL(imageUrl).pathname.toLowerCase();
+          if (pathname.endsWith(".png")) return "png";
+          if (pathname.endsWith(".webp")) return "webp";
+          if (pathname.endsWith(".gif")) return "gif";
+        } catch {
+          // Use jpg fallback.
+        }
+
+        return "jpg";
+      }
+
+      function slugify(value) {
+        return String(value || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_|_$/g, "")
+          .slice(0, 40);
+      }
+
+      async function fetchMediaInfoWithRetry(mediaUrl, maxAttempts) {
         let lastError = null;
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
             const res = await fetch(
-              `/api/info?url=${encodeURIComponent(tiktokUrl)}`,
+              `/api/info?url=${encodeURIComponent(mediaUrl)}`,
             );
 
             if (!res.ok) {
@@ -1247,6 +1574,47 @@
         }
 
         throw lastError || new Error("UNKNOWN_ERROR");
+      }
+
+      async function triggerDownloadGroup(btn, assets, filename) {
+        if (btn.disabled) return;
+
+        btn.disabled = true;
+        btn.classList.add("loading");
+        const label = btn.querySelector(".btn-label");
+        const origText = label.textContent;
+        label.textContent = "Đang tải file…";
+
+        try {
+          for (let i = 0; i < assets.length; i++) {
+            const asset = assets[i];
+            const assetName = assets.length === 1 ? filename : asset.filename;
+            await triggerDownloadAsset(asset.url, assetName);
+            if (i < assets.length - 1) await sleep(250);
+          }
+
+          label.textContent = "✅ Đang tải xuống…";
+          setTimeout(() => {
+            label.textContent = origText;
+          }, 4000);
+        } catch (err) {
+          console.error(err);
+          label.textContent = origText;
+          showError("Tải file thất bại. Thử lại sau.");
+        } finally {
+          btn.disabled = false;
+          btn.classList.remove("loading");
+        }
+      }
+
+      async function triggerDownloadAsset(videoUrl, filename) {
+        const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+        const a = document.createElement("a");
+        a.href = dlUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       }
 
       function parseInfoError(err) {
