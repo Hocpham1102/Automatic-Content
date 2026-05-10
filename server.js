@@ -123,14 +123,32 @@ function getPlatform(urlString = "") {
   return "unknown";
 }
 
+function getRefererForUrl(targetUrl = "") {
+  try {
+    const host = new URL(targetUrl).hostname.toLowerCase();
+    if (host.includes("douyin")) return "https://www.douyin.com/";
+    if (host.includes("instagram")) return "https://www.instagram.com/";
+    if (host.includes("facebook") || host.includes("fb.watch"))
+      return "https://www.facebook.com/";
+    if (host.includes("threads")) return "https://www.threads.net/";
+    if (host.includes("tiktok")) return "https://www.tiktok.com/";
+  } catch {
+    // Fallback below.
+  }
+
+  return "https://www.tiktok.com/";
+}
+
 async function downloadUpstream(videoUrl, maxAttempts = 3) {
   let lastError;
+  const referer = getRefererForUrl(videoUrl);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const upstream = await httpsGet(videoUrl, {
         headers: {
           "Cache-Control": "no-cache",
+          Referer: referer,
         },
       });
 

@@ -284,12 +284,12 @@
         color: var(--text);
       }
 
-      #downloadBtn {
+      .action-btn {
         background: linear-gradient(135deg, var(--accent), #d4004a);
         color: #fff;
         font-size: 0.95rem;
-        font-weight: 700;
-        padding: 14px 28px;
+        font-weight: 600;
+        padding: 12px 16px;
         border: none;
         border-radius: 12px;
         cursor: pointer;
@@ -301,22 +301,31 @@
         gap: 8px;
         letter-spacing: 0.3px;
       }
-      #downloadBtn:hover {
+      .action-btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 8px 24px rgba(255, 45, 85, 0.4);
       }
-      #downloadBtn:active {
+      .action-btn:active {
         transform: translateY(0);
       }
-      #downloadBtn:disabled {
+      .action-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
       }
+      .action-btn-secondary {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .action-btn-secondary:hover {
+        box-shadow: none;
+        border-color: rgba(255, 255, 255, 0.2);
+      }
 
       /* Spinner */
-      .spinner {
+      .action-spinner {
         width: 16px;
         height: 16px;
         border: 2px solid rgba(255, 255, 255, 0.3);
@@ -746,7 +755,6 @@
         background: rgba(255, 255, 255, 0.06);
         border-color: var(--accent);
       }
-      }
 
       /* ── Error message ── */
       #error {
@@ -863,7 +871,7 @@
         #pasteBtn {
           order: -1;
         }
-        #downloadBtn {
+        .action-btn {
           width: 100%;
           justify-content: center;
         }
@@ -913,14 +921,14 @@
           autocomplete="off"
         ></textarea>
         <button id="pasteBtn" onclick="pasteLink()">📋 Dán</button>
-        <button id="downloadBtn" onclick="fetchVideo()">
-          <span class="spinner" id="spinner"></span>
-          <span id="btnText">⬇ Tải ngay</span>
+        <button id="analyzeBtn" class="action-btn" onclick="fetchVideo()">
+          <span class="action-spinner" id="analyzeSpinner"></span>
+          <span id="analyzeBtnText">🔎 Phân tích & chọn mục tải</span>
         </button>
       </div>
       <div class="input-hint">
-        Bạn có thể dán nhiều link cùng lúc. Hệ thống sẽ tải lần lượt video hoặc
-        album ảnh tùy theo link.
+        Dán link rồi nhấn phân tích, sau đó chọn video/ảnh muốn tải. Hệ thống sẽ
+        không tự động tải xuống.
       </div>
     </div>
 
@@ -958,7 +966,7 @@
       <div class="result-card">
         <div class="result-header">
           <div class="status-dot"></div>
-          <h3>Tìm thấy video!</h3>
+          <h3>Đã phân tích nội dung!</h3>
           <span id="resultMeta"></span>
         </div>
         <div class="result-body">
@@ -971,7 +979,15 @@
             <div class="download-btns">
               <button id="dlNoWatermark" class="dl-btn dl-btn-primary">
                 <span class="btn-spinner"></span>
-                <span class="btn-label">🎬 Tải video (Không logo)</span>
+                <span class="btn-label">🎬 Tải video</span>
+              </button>
+              <button
+                id="dlImages"
+                class="dl-btn dl-btn-secondary"
+                style="display: none"
+              >
+                <span class="btn-spinner"></span>
+                <span class="btn-label">🖼 Tải ảnh</span>
               </button>
               <button
                 id="dlWatermark"
@@ -990,7 +1006,11 @@
                 <span class="btn-label">🎵 Tải âm thanh (MP3)</span>
               </button>
             </div>
-            <div id="imageGallery" class="image-gallery" style="display: none;"></div>
+            <div
+              id="imageGallery"
+              class="image-gallery"
+              style="display: none"
+            ></div>
           </div>
         </div>
       </div>
@@ -1047,6 +1067,9 @@
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) fetchVideo();
       });
 
+      window.lastRenderData = null;
+      window.currentSelectableAssets = [];
+
       // ── Fetch video info (qua server local) ──
       async function fetchVideo() {
         const rawInput = document.getElementById("urlInput").value.trim();
@@ -1066,7 +1089,6 @@
 
         let successCount = 0;
         let firstVideoRendered = false;
-        const readyDownloads = [];
 
         // B1: Lấy danh sách file tải cho toàn bộ URL trước.
         for (let i = 0; i < links.length; i++) {
@@ -1077,22 +1099,25 @@
             const data = await fetchMediaInfoWithRetry(mediaUrl, 2);
 
             if (data && data.status !== false) {
-              const assets = extractDownloadAssets(data, mediaUrl);
+              const assets = prioritizeHighestQualityAssets(
+                extractDownloadAssets(data, mediaUrl),
+              );
 
               if (!assets.length) {
-                updateBatchItem(i, "error", "Không có link tải");
+                updateBatchItem(i, "error", "Link này không có mục tải");
                 continue;
               }
 
-              readyDownloads.push({ index: i, assets });
-              updateBatchItem(i, "success", "Đã lấy link tải");
+              updateBatchItem(i, "success", "Đã phân tích");
+              successCount++;
 
               if (!firstVideoRendered) {
+                window.lastRenderData = { data, mediaUrl };
                 renderResult(data, mediaUrl);
                 firstVideoRendered = true;
               }
             } else {
-              updateBatchItem(i, "error", "Link lỗi hoặc video riêng tư");
+              updateBatchItem(i, "error", "Link lỗi hoặc nội dung riêng tư");
             }
           } catch (err) {
             updateBatchItem(i, "error", parseInfoError(err));
@@ -1102,28 +1127,11 @@
           if (i < links.length - 1) await sleep(250);
         }
 
-        // B2: Khi đã có danh sách file tải, kích hoạt tải lần lượt.
-        for (const item of readyDownloads) {
-          try {
-            updateBatchItem(item.index, "loading", "Đang tải file");
-            await downloadAssetGroupWithRetry(item.assets, 3);
-            updateBatchItem(item.index, "success", "Đã tải xong");
-            successCount++;
-          } catch (err) {
-            console.error(err);
-            updateBatchItem(item.index, "error", parseDownloadError(err));
-          }
-
-          await sleep(1500);
-        }
-
         if (!successCount) {
-          showError(
-            "Không tải được video nào. Vui lòng kiểm tra lại danh sách link.",
-          );
+          showError("Không tìm thấy mục tải nào. Vui lòng kiểm tra lại link.");
         } else if (successCount < links.length) {
           showError(
-            `Đã tải ${successCount}/${links.length} video. Một số link bị lỗi.`,
+            `Đã phân tích ${successCount}/${links.length} link. Một số link bị lỗi.`,
           );
         }
 
@@ -1135,10 +1143,15 @@
         const thumb = document.getElementById("thumb");
         const meta = document.getElementById("videoMeta");
         const dlNW = document.getElementById("dlNoWatermark");
+        const dlImages = document.getElementById("dlImages");
         const dlW = document.getElementById("dlWatermark");
         const dlA = document.getElementById("dlAudio");
-        const assets = extractDownloadAssets(d, sourceUrl);
+        const assets = prioritizeHighestQualityAssets(
+          extractDownloadAssets(d, sourceUrl),
+        );
         const primaryAsset = assets[0] || null;
+        const imageAssets = assets.filter((a) => a.kind === "image");
+        const videoAssets = assets.filter((a) => a.kind === "video");
         const platformLabel = formatPlatformLabel(
           d.platform || detectPlatform(sourceUrl),
         );
@@ -1151,11 +1164,7 @@
           "";
 
         const title = document.getElementById("videoTitle");
-        // Only consider as image post if primary asset is image (or multiple images, not video quality levels)
-        const isImagePost =
-          assets[0]?.kind === "image" &&
-          assets.length > 1 &&
-          assets.every((a) => a.kind === "image");
+        const isImagePost = imageAssets.length > 0 && videoAssets.length === 0;
         title.textContent =
           d.title || (isImagePost ? "Album ảnh" : `Nội dung ${platformLabel}`);
 
@@ -1173,30 +1182,27 @@
         document.getElementById("resultMeta").textContent =
           new Date().toLocaleTimeString("vi-VN");
 
-        if (primaryAsset) {
-          dlNW.onclick = () =>
-            triggerDownloadGroup(
-              dlNW,
-              assets,
-              buildPrimaryFilename(d, assets, sourceUrl),
-            );
-          dlNW.style.display = isImagePost ? "none" : "flex";
-          dlNW.querySelector(".btn-label").textContent = isImagePost
-            ? `📷 Tải ảnh (${assets.length})`
-            : "🎬 Tải video (Không logo)";
+        if (assets.length) {
+          dlNW.onclick = () => downloadSelectedAssets();
+          dlNW.style.display = "flex";
+          dlNW.querySelector(".btn-label").textContent = "⬇ Tải mục đã chọn";
         } else {
           dlNW.style.display = "none";
         }
 
-        // Render image gallery for image posts
+        dlImages.style.display = "none";
+        dlW.style.display = "none";
+        dlA.style.display = "none";
+
+        // Render selector gallery for both image and video.
         const galleryContainer = document.getElementById("imageGallery");
-        if (isImagePost && assets.length > 1) {
+        if (assets.length) {
           galleryContainer.innerHTML = `
-            <div class="gallery-title">Chọn ảnh để tải:</div>
+            <div class="gallery-title">Chọn mục muốn tải:</div>
             <div class="gallery-toolbar">
-              <button onclick="selectAllImages()">✓ Chọn tất cả</button>
-              <button onclick="clearAllImages()">✗ Bỏ chọn</button>
-              <button onclick="downloadSelectedImages()">⬇ Tải chọn</button>
+              <button onclick="selectAllAssets()">✓ Chọn tất cả</button>
+              <button onclick="clearAllAssets()">✗ Bỏ chọn</button>
+              <button onclick="downloadSelectedAssets()">⬇ Tải mục đã chọn</button>
             </div>
             <div class="gallery-grid" id="galleryGrid"></div>
           `;
@@ -1207,40 +1213,25 @@
             item.innerHTML = `
               <input type="checkbox" class="gallery-checkbox" value="${idx}" style="position: absolute; top: 4px; left: 4px; z-index: 10; cursor: pointer;" />
               <img src="${asset.previewUrl || asset.url}" alt="Ảnh ${idx + 1}" />
-              <div class="gallery-item-overlay">
-                <button class="gallery-item-btn" onclick="downloadImageAt(${idx})">Tải</button>
+              <div class="gallery-item-overlay" style="opacity:1; align-items:flex-end; justify-content:flex-start; padding:4px;">
+                <span style="font-size:11px;background:rgba(0,0,0,.65);padding:2px 6px;border-radius:10px;">
+                  ${asset.kind === "video" ? "🎬 Video" : "🖼 Ảnh"}
+                </span>
               </div>
             `;
             grid.appendChild(item);
           });
           galleryContainer.style.display = "block";
 
-          // Store current assets for gallery functions
-          window.currentGalleryAssets = assets;
-          window.currentImageFilename = buildPrimaryFilename(d, assets, sourceUrl);
+          window.currentSelectableAssets = assets;
         } else {
           galleryContainer.style.display = "none";
         }
 
-        const wmUrl = d.wmplay || d.video_url || "";
-        if (!isImagePost && wmUrl && wmUrl !== primaryAsset?.url) {
-          dlW.onclick = () =>
-            triggerDownload(dlW, wmUrl, `tiktok_logo_${Date.now()}.mp4`);
-          dlW.style.display = "flex";
-        } else {
-          dlW.style.display = "none";
-        }
-
-        const audUrl = d.music || d.music_info?.play || "";
-        if (!isImagePost && audUrl) {
-          dlA.onclick = () =>
-            triggerDownload(dlA, audUrl, `tiktok_audio_${Date.now()}.mp3`);
-          dlA.style.display = "flex";
-        } else {
-          dlA.style.display = "none";
-        }
-
         document.getElementById("result").style.display = "block";
+        document
+          .getElementById("result")
+          .scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       // ── Force download qua server local ──
@@ -1372,10 +1363,14 @@
       }
 
       function parseSupportedLinks(rawInput) {
+        const extractedUrls = rawInput.match(/https?:\/\/[^\s<>"'`]+/g) || [];
+        const sourceValues = extractedUrls.length
+          ? extractedUrls
+          : rawInput.split(/\r?\n|,|\s+/);
+
         return Array.from(
           new Set(
-            rawInput
-              .split(/\r?\n|,|\s+/)
+            sourceValues
               .map((v) => v.trim())
               .map((v) => normalizeMediaUrl(v))
               .filter(
@@ -1451,18 +1446,23 @@
 
         if (normalizedMedia.length) {
           normalizedMedia.forEach((item, index) => {
-            const mediaType = String(item?.type || "video").toLowerCase();
+            const mediaType = String(
+              item?.type || item?.mediaType || item?.format || "video",
+            ).toLowerCase();
             const mediaUrl = item?.url || item?.download || "";
             if (!mediaUrl) return;
+            if (mediaType.includes("audio")) return;
 
             assets.push({
-              kind: mediaType === "image" ? "image" : "video",
+              kind: mediaType.includes("image") ? "image" : "video",
               url: mediaUrl,
               filename:
-                mediaType === "image"
+                mediaType.includes("image")
                   ? buildImageFilename(d, index, mediaUrl)
                   : buildVideoFilename(d, sourceUrl),
-              previewUrl: item?.thumbnail || item?.preview || mediaUrl,
+              previewUrl: mediaType.includes("image")
+                ? mediaUrl
+                : item?.thumbnail || item?.preview || mediaUrl,
             });
           });
 
@@ -1489,10 +1489,7 @@
               kind: "image",
               url: imageUrl,
               filename: buildImageFilename(d, index, imageUrl),
-              previewUrl:
-                typeof item === "string"
-                  ? imageUrl
-                  : item?.thumbnail || item?.image || item?.src || imageUrl,
+              previewUrl: imageUrl,
             });
           });
           return assets;
@@ -1545,28 +1542,42 @@
               ? douyinPayload.links
               : [];
           if (links.length) {
-            // Check if links are video quality levels (have quality field) or images
-            const isVideoQuality = links.some((item) => item?.quality);
+            // Determine content type by checking URL extensions
+            const imageExts = /\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)/i;
+            const audioExts = /\.(mp3|m4a|aac|wav|ogg)(\?|$)/i;
 
             links.forEach((item, index) => {
               if (!item?.url) return;
-              const kind = isVideoQuality
-                ? "video"
-                : item?.type === "image"
-                  ? "image"
-                  : "video";
+              const tokenInfo = parseSnapcdnTokenInfo(item.url);
+              const resolvedUrl = tokenInfo?.url || item.url;
+              const tokenFile = String(
+                tokenInfo?.filename || tokenInfo?.url || "",
+              ).toLowerCase();
+              const typeHint = String(
+                item?.type || item?.format || item?.mime || "",
+              ).toLowerCase();
+              const isImage =
+                typeHint.includes("image") ||
+                imageExts.test(item.url) ||
+                /\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)/i.test(tokenFile);
+              const isAudio =
+                typeHint.includes("audio") ||
+                audioExts.test(item.url) ||
+                /\/music\//i.test(item.url) ||
+                /\.(mp3|m4a|aac|wav|ogg)(\?|$)/i.test(tokenFile);
+              if (isAudio) return;
+              const kind = isImage ? "image" : "video";
               assets.push({
                 kind,
-                url: item.url,
+                url: resolvedUrl,
                 filename:
                   kind === "image"
-                    ? buildImageFilename(d, index, item.url)
+                    ? buildImageFilename(d, index, resolvedUrl)
                     : buildVideoFilename(d, sourceUrl),
                 previewUrl:
-                  payload?.data?.thumbnail ||
-                  d.thumbnail ||
-                  d.cover ||
-                  item.url,
+                  kind === "image"
+                    ? resolvedUrl
+                    : payload?.data?.thumbnail || d.thumbnail || d.cover || resolvedUrl,
               });
             });
           }
@@ -1642,6 +1653,54 @@
         return assets;
       }
 
+      function prioritizeHighestQualityAssets(assets) {
+        if (!Array.isArray(assets) || !assets.length) return [];
+
+        const images = assets.filter((a) => a.kind === "image");
+        const videos = assets.filter((a) => a.kind === "video");
+        if (!videos.length) return assets;
+
+        let bestVideo = videos[0];
+        let bestScore = getAssetQualityScore(videos[0]);
+        for (let i = 1; i < videos.length; i++) {
+          const score = getAssetQualityScore(videos[i]);
+          if (score > bestScore) {
+            bestScore = score;
+            bestVideo = videos[i];
+          }
+        }
+
+        // Keep all images, but only keep the highest-quality video candidate.
+        return [...images, bestVideo];
+      }
+
+      function getAssetQualityScore(asset) {
+        const url = String(asset?.url || "");
+        const text = url.toLowerCase();
+        let score = 0;
+
+        const dimMatch =
+          text.match(/(\d{3,4})[:x](\d{3,4})/) ||
+          text.match(/\/(\d{3,4})[pP](?:[\/?]|$)/) ||
+          text.match(/(?:^|[^0-9])(\d{3,4})(?:p|q)(?:[^0-9]|$)/);
+        if (dimMatch) {
+          if (dimMatch[2]) {
+            const w = Number(dimMatch[1]) || 0;
+            const h = Number(dimMatch[2]) || 0;
+            score += w * h;
+          } else {
+            const h = Number(dimMatch[1]) || 0;
+            score += h * 1000;
+          }
+        }
+
+        if (text.includes("hd")) score += 500000;
+        if (text.includes("fhd")) score += 700000;
+        if (text.includes("uhd") || text.includes("4k")) score += 1000000;
+        if (text.includes("q82")) score += 82000;
+        return score;
+      }
+
       function normalizeImageList(value) {
         if (!value) return [];
         if (Array.isArray(value)) {
@@ -1673,6 +1732,13 @@
       }
 
       function inferImageExtension(imageUrl) {
+        const tokenInfo = parseSnapcdnTokenInfo(imageUrl);
+        const tokenName = String(tokenInfo?.filename || tokenInfo?.url || "").toLowerCase();
+        if (tokenName.includes(".jpeg") || tokenName.includes(".jpg")) return "jpg";
+        if (tokenName.includes(".png")) return "png";
+        if (tokenName.includes(".webp")) return "webp";
+        if (tokenName.includes(".gif")) return "gif";
+
         try {
           const pathname = new URL(imageUrl).pathname.toLowerCase();
           if (pathname.endsWith(".png")) return "png";
@@ -1683,6 +1749,23 @@
         }
 
         return "jpg";
+      }
+
+      function parseSnapcdnTokenInfo(mediaUrl) {
+        try {
+          const parsedUrl = new URL(mediaUrl);
+          if (!parsedUrl.hostname.includes("snapcdn.app")) return null;
+          const token = parsedUrl.searchParams.get("token");
+          if (!token) return null;
+          const parts = token.split(".");
+          if (parts.length < 2) return null;
+          const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+          const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+          const decoded = atob(padded);
+          return JSON.parse(decoded);
+        } catch {
+          return null;
+        }
       }
 
       function slugify(value) {
@@ -1728,13 +1811,17 @@
         throw lastError || new Error("UNKNOWN_ERROR");
       }
 
-      // ── Gallery functions ──
-      function selectAllImages() {
-        document.querySelectorAll(".gallery-checkbox").forEach(cb => (cb.checked = true));
+      // ── Selector functions ──
+      function selectAllAssets() {
+        document
+          .querySelectorAll(".gallery-checkbox")
+          .forEach((cb) => (cb.checked = true));
       }
 
-      function clearAllImages() {
-        document.querySelectorAll(".gallery-checkbox").forEach(cb => (cb.checked = false));
+      function clearAllAssets() {
+        document
+          .querySelectorAll(".gallery-checkbox")
+          .forEach((cb) => (cb.checked = false));
       }
 
       async function downloadSingleImage(imageUrl, filename) {
@@ -1753,35 +1840,28 @@
         }
       }
 
-      async function downloadImageAt(index) {
-        if (!window.currentGalleryAssets) return;
-        const asset = window.currentGalleryAssets[index];
-        if (!asset) return;
-        const filename = `image_${index + 1}_${Date.now()}.jpg`;
-        await downloadSingleImage(asset.url, filename);
-      }
-
-      async function downloadSelectedImages() {
-        const checkboxes = document.querySelectorAll(".gallery-checkbox:checked");
+      async function downloadSelectedAssets() {
+        const checkboxes = document.querySelectorAll(
+          ".gallery-checkbox:checked",
+        );
         if (!checkboxes.length) {
-          alert("Vui lòng chọn ít nhất một ảnh.");
+          alert("Vui lòng chọn ít nhất một mục để tải.");
           return;
         }
 
         const selectedAssets = [];
-        checkboxes.forEach(cb => {
+        checkboxes.forEach((cb) => {
           const idx = parseInt(cb.value);
-          if (window.currentGalleryAssets[idx]) {
-            selectedAssets.push(window.currentGalleryAssets[idx]);
+          if (window.currentSelectableAssets[idx]) {
+            selectedAssets.push(window.currentSelectableAssets[idx]);
           }
         });
 
         if (!selectedAssets.length) return;
 
-        // Download all selected images
         for (let i = 0; i < selectedAssets.length; i++) {
           const asset = selectedAssets[i];
-          const filename = `image_${i + 1}_${Date.now()}.jpg`;
+          const filename = asset.filename || `media_${i + 1}_${Date.now()}`;
           await downloadSingleImage(asset.url, filename);
         }
       }
@@ -1840,7 +1920,7 @@
         const box = document.getElementById("batchStatus");
         const list = document.getElementById("batchList");
         const title = document.getElementById("batchTitle");
-        title.textContent = `Tiến trình tải hàng loạt (${links.length} link)`;
+        title.textContent = `Tiến trình phân tích (${links.length} link)`;
         list.innerHTML = "";
 
         links.forEach((link, idx) => {
@@ -1878,12 +1958,12 @@
       }
 
       function setLoading(on) {
-        const btn = document.getElementById("downloadBtn");
-        const spin = document.getElementById("spinner");
-        const txt = document.getElementById("btnText");
+        const btn = document.getElementById("analyzeBtn");
+        const spin = document.getElementById("analyzeSpinner");
+        const txt = document.getElementById("analyzeBtnText");
         btn.disabled = on;
         spin.style.display = on ? "block" : "none";
-        txt.textContent = on ? "Đang tải…" : "⬇ Tải ngay";
+        txt.textContent = on ? "Đang phân tích…" : "🔎 Phân tích & chọn mục tải";
       }
 
       function showError(msg) {
