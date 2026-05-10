@@ -650,6 +650,104 @@
         opacity: 0.7;
       }
 
+      .image-gallery {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+      }
+
+      .gallery-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--muted);
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+      }
+
+      .gallery-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        aspect-ratio: 1;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .gallery-item:hover {
+        border-color: var(--accent);
+        transform: scale(1.05);
+      }
+
+      .gallery-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .gallery-item-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .gallery-item:hover .gallery-item-overlay {
+        opacity: 1;
+      }
+
+      .gallery-item-btn {
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .gallery-item-btn:hover {
+        background: #d4004a;
+        transform: scale(1.1);
+      }
+
+      .gallery-toolbar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .gallery-toolbar button {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .gallery-toolbar button:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--accent);
+      }
+      }
+
       /* ── Error message ── */
       #error {
         position: relative;
@@ -892,6 +990,7 @@
                 <span class="btn-label">🎵 Tải âm thanh (MP3)</span>
               </button>
             </div>
+            <div id="imageGallery" class="image-gallery" style="display: none;"></div>
           </div>
         </div>
       </div>
@@ -1053,7 +1152,10 @@
 
         const title = document.getElementById("videoTitle");
         // Only consider as image post if primary asset is image (or multiple images, not video quality levels)
-        const isImagePost = assets[0]?.kind === "image" && (assets.length > 1 && assets.every(a => a.kind === "image"));
+        const isImagePost =
+          assets[0]?.kind === "image" &&
+          assets.length > 1 &&
+          assets.every((a) => a.kind === "image");
         title.textContent =
           d.title || (isImagePost ? "Album ảnh" : `Nội dung ${platformLabel}`);
 
@@ -1078,12 +1180,46 @@
               assets,
               buildPrimaryFilename(d, assets, sourceUrl),
             );
-          dlNW.style.display = "flex";
+          dlNW.style.display = isImagePost ? "none" : "flex";
           dlNW.querySelector(".btn-label").textContent = isImagePost
             ? `📷 Tải ảnh (${assets.length})`
             : "🎬 Tải video (Không logo)";
         } else {
           dlNW.style.display = "none";
+        }
+
+        // Render image gallery for image posts
+        const galleryContainer = document.getElementById("imageGallery");
+        if (isImagePost && assets.length > 1) {
+          galleryContainer.innerHTML = `
+            <div class="gallery-title">Chọn ảnh để tải:</div>
+            <div class="gallery-toolbar">
+              <button onclick="selectAllImages()">✓ Chọn tất cả</button>
+              <button onclick="clearAllImages()">✗ Bỏ chọn</button>
+              <button onclick="downloadSelectedImages()">⬇ Tải chọn</button>
+            </div>
+            <div class="gallery-grid" id="galleryGrid"></div>
+          `;
+          const grid = document.getElementById("galleryGrid");
+          assets.forEach((asset, idx) => {
+            const item = document.createElement("div");
+            item.className = "gallery-item";
+            item.innerHTML = `
+              <input type="checkbox" class="gallery-checkbox" value="${idx}" style="position: absolute; top: 4px; left: 4px; z-index: 10; cursor: pointer;" />
+              <img src="${asset.previewUrl || asset.url}" alt="Ảnh ${idx + 1}" />
+              <div class="gallery-item-overlay">
+                <button class="gallery-item-btn" onclick="downloadImageAt(${idx})">Tải</button>
+              </div>
+            `;
+            grid.appendChild(item);
+          });
+          galleryContainer.style.display = "block";
+
+          // Store current assets for gallery functions
+          window.currentGalleryAssets = assets;
+          window.currentImageFilename = buildPrimaryFilename(d, assets, sourceUrl);
+        } else {
+          galleryContainer.style.display = "none";
         }
 
         const wmUrl = d.wmplay || d.video_url || "";
@@ -1410,11 +1546,15 @@
               : [];
           if (links.length) {
             // Check if links are video quality levels (have quality field) or images
-            const isVideoQuality = links.some(item => item?.quality);
-            
+            const isVideoQuality = links.some((item) => item?.quality);
+
             links.forEach((item, index) => {
               if (!item?.url) return;
-              const kind = isVideoQuality ? "video" : (item?.type === "image" ? "image" : "video");
+              const kind = isVideoQuality
+                ? "video"
+                : item?.type === "image"
+                  ? "image"
+                  : "video";
               assets.push({
                 kind,
                 url: item.url,
@@ -1422,7 +1562,11 @@
                   kind === "image"
                     ? buildImageFilename(d, index, item.url)
                     : buildVideoFilename(d, sourceUrl),
-                previewUrl: payload?.data?.thumbnail || d.thumbnail || d.cover || item.url,
+                previewUrl:
+                  payload?.data?.thumbnail ||
+                  d.thumbnail ||
+                  d.cover ||
+                  item.url,
               });
             });
           }
@@ -1582,6 +1726,64 @@
         }
 
         throw lastError || new Error("UNKNOWN_ERROR");
+      }
+
+      // ── Gallery functions ──
+      function selectAllImages() {
+        document.querySelectorAll(".gallery-checkbox").forEach(cb => (cb.checked = true));
+      }
+
+      function clearAllImages() {
+        document.querySelectorAll(".gallery-checkbox").forEach(cb => (cb.checked = false));
+      }
+
+      async function downloadSingleImage(imageUrl, filename) {
+        try {
+          const dlUrl = `/api/download?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
+          const a = document.createElement("a");
+          a.href = dlUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          await sleep(500);
+        } catch (err) {
+          console.error("Single image download failed:", err);
+          showError("Tải ảnh thất bại. Thử lại sau.");
+        }
+      }
+
+      async function downloadImageAt(index) {
+        if (!window.currentGalleryAssets) return;
+        const asset = window.currentGalleryAssets[index];
+        if (!asset) return;
+        const filename = `image_${index + 1}_${Date.now()}.jpg`;
+        await downloadSingleImage(asset.url, filename);
+      }
+
+      async function downloadSelectedImages() {
+        const checkboxes = document.querySelectorAll(".gallery-checkbox:checked");
+        if (!checkboxes.length) {
+          alert("Vui lòng chọn ít nhất một ảnh.");
+          return;
+        }
+
+        const selectedAssets = [];
+        checkboxes.forEach(cb => {
+          const idx = parseInt(cb.value);
+          if (window.currentGalleryAssets[idx]) {
+            selectedAssets.push(window.currentGalleryAssets[idx]);
+          }
+        });
+
+        if (!selectedAssets.length) return;
+
+        // Download all selected images
+        for (let i = 0; i < selectedAssets.length; i++) {
+          const asset = selectedAssets[i];
+          const filename = `image_${i + 1}_${Date.now()}.jpg`;
+          await downloadSingleImage(asset.url, filename);
+        }
       }
 
       async function triggerDownloadGroup(btn, assets, filename) {
