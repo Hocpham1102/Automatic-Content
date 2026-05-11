@@ -107,7 +107,8 @@ function getPlatform(urlString = "") {
     if (host.includes("instagram.com")) return "instagram";
     if (host.includes("facebook.com") || host.includes("fb.watch"))
       return "facebook";
-    if (host.includes("threads.net")) return "threads";
+    if (host.includes("threads.net") || host.includes("threads.com"))
+      return "threads";
     if (host.includes("douyin") || host.includes("iesdouyin")) return "douyin";
     if (
       host.includes("tiktok.com") ||
@@ -130,6 +131,7 @@ function getRefererForUrl(targetUrl = "") {
     if (host.includes("instagram")) return "https://www.instagram.com/";
     if (host.includes("facebook") || host.includes("fb.watch"))
       return "https://www.facebook.com/";
+    if (host.includes("threads.com")) return "https://www.threads.com/";
     if (host.includes("threads")) return "https://www.threads.net/";
     if (host.includes("tiktok")) return "https://www.tiktok.com/";
   } catch {
@@ -139,9 +141,20 @@ function getRefererForUrl(targetUrl = "") {
   return "https://www.tiktok.com/";
 }
 
-async function downloadUpstream(videoUrl, maxAttempts = 3) {
+// ── Threads Media Extractor ────────────────────────────────
+async function extractThreadsMedia(threadUrl) {
+  // Use btch-downloader which works reliably for single items
+  // Note: Carousel posts will return only the first item (btch-downloader limitation)
+  return await threads(threadUrl);
+}
+
+async function downloadUpstream(
+  videoUrl,
+  maxAttempts = 3,
+  refererOverride = "",
+) {
   let lastError;
-  const referer = getRefererForUrl(videoUrl);
+  const referer = refererOverride || getRefererForUrl(videoUrl);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -231,7 +244,7 @@ const server = http.createServer(async (req, res) => {
           };
         }
       } else if (platform === "threads") {
-        data = await threads(mediaUrl);
+        data = await extractThreadsMedia(mediaUrl);
       } else if (platform === "douyin") {
         data = await douyin(mediaUrl);
       } else {
@@ -249,11 +262,12 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/api/download") {
     const videoUrl = query.url;
     const filename = query.filename || "tiktok_video.mp4";
+    const referer = query.referer || "";
 
     if (!videoUrl) return sendJson(res, { error: "Missing url param" }, 400);
 
     try {
-      const upstream = await downloadUpstream(videoUrl, 3);
+      const upstream = await downloadUpstream(videoUrl, 3, referer);
 
       const contentType = upstream.headers["content-type"] || "video/mp4";
       const contentLen = upstream.headers["content-length"];

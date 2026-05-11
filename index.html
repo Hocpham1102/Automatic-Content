@@ -1179,6 +1179,11 @@
         if (!isImagePost && assets.length)
           addMeta(meta, "🎬", `${assets.length} tệp media`);
 
+        // Threads carousel warning
+        if (platformLabel === "Threads" && assets.length === 1) {
+          addMeta(meta, "ℹ️", "⚠️ Chỉ hiển thị video đầu tiên từ carousel");
+        }
+
         document.getElementById("resultMeta").textContent =
           new Date().toLocaleTimeString("vi-VN");
 
@@ -1245,9 +1250,10 @@
         label.textContent = "Đang tải file…";
 
         try {
+          const referer = btn?.dataset?.referer || "";
           // Gọi /api/download trên server local – server sẽ pipe video về
           // với header Content-Disposition: attachment nên trình duyệt tự lưu file
-          const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+          const dlUrl = buildDownloadUrl(videoUrl, filename, referer);
 
           const a = document.createElement("a");
           a.href = dlUrl;
@@ -1276,7 +1282,11 @@
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
             for (const asset of assets) {
-              await downloadViaBlob(asset.url, asset.filename);
+              await downloadViaBlob(
+                asset.url,
+                asset.filename,
+                asset.sourceUrl || "",
+              );
               await sleep(250);
             }
             return;
@@ -1291,12 +1301,17 @@
         throw lastError || new Error("DOWNLOAD_FAILED");
       }
 
-      async function downloadViaBlobWithRetry(videoUrl, filename, maxAttempts) {
+      async function downloadViaBlobWithRetry(
+        videoUrl,
+        filename,
+        maxAttempts,
+        referer = "",
+      ) {
         let lastError = null;
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            await downloadViaBlob(videoUrl, filename);
+            await downloadViaBlob(videoUrl, filename, referer);
             return;
           } catch (err) {
             lastError = err;
@@ -1309,8 +1324,8 @@
         throw lastError || new Error("DOWNLOAD_FAILED");
       }
 
-      async function downloadViaBlob(videoUrl, filename) {
-        const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+      async function downloadViaBlob(videoUrl, filename, referer = "") {
+        const dlUrl = buildDownloadUrl(videoUrl, filename, referer);
         const response = await fetch(dlUrl, { cache: "no-store" });
 
         if (!response.ok) {
@@ -1385,7 +1400,8 @@
                     v.includes("instagram.com") ||
                     v.includes("facebook.com") ||
                     v.includes("fb.watch") ||
-                    v.includes("threads.net")),
+                    v.includes("threads.net") ||
+                    v.includes("threads.com")),
               ),
           ),
         );
@@ -1397,7 +1413,8 @@
           if (host.includes("instagram.com")) return "instagram";
           if (host.includes("facebook.com") || host.includes("fb.watch"))
             return "facebook";
-          if (host.includes("threads.net")) return "threads";
+          if (host.includes("threads.net") || host.includes("threads.com"))
+            return "threads";
           if (host.includes("douyin") || host.includes("iesdouyin"))
             return "douyin";
           if (
@@ -1456,10 +1473,10 @@
             assets.push({
               kind: mediaType.includes("image") ? "image" : "video",
               url: mediaUrl,
-              filename:
-                mediaType.includes("image")
-                  ? buildImageFilename(d, index, mediaUrl)
-                  : buildVideoFilename(d, sourceUrl),
+              sourceUrl,
+              filename: mediaType.includes("image")
+                ? buildImageFilename(d, index, mediaUrl)
+                : buildVideoFilename(d, sourceUrl),
               previewUrl: mediaType.includes("image")
                 ? mediaUrl
                 : item?.thumbnail || item?.preview || mediaUrl,
@@ -1488,6 +1505,7 @@
             assets.push({
               kind: "image",
               url: imageUrl,
+              sourceUrl,
               filename: buildImageFilename(d, index, imageUrl),
               previewUrl: imageUrl,
             });
@@ -1506,6 +1524,7 @@
             assets.push({
               kind: "video",
               url: videoUrl,
+              sourceUrl,
               filename: buildVideoFilename(d, sourceUrl),
               previewUrl: d.thumbnail || d.cover || videoUrl,
             });
@@ -1515,21 +1534,52 @@
 
         if (platform === "threads") {
           const threadPayload = payload?.result || payload;
+
+          // Handle image type
           if (threadPayload?.type === "image" && threadPayload.image) {
             assets.push({
               kind: "image",
               url: threadPayload.image,
+              sourceUrl,
               filename: buildImageFilename(d, 0, threadPayload.image),
               previewUrl: threadPayload.image,
             });
-          } else if (threadPayload?.type === "video" && threadPayload.video) {
+          }
+
+          // Handle video type
+          if (threadPayload?.type === "video" && threadPayload.video) {
             assets.push({
               kind: "video",
               url: threadPayload.video,
+              sourceUrl,
               filename: buildVideoFilename(d, sourceUrl),
               previewUrl: threadPayload.image || threadPayload.video,
             });
           }
+
+          // Handle download URL (fallback for when type is not specified or alternative format)
+          if (
+            !threadPayload?.image &&
+            !threadPayload?.video &&
+            threadPayload?.download
+          ) {
+            const downloadUrl = threadPayload.download;
+            const isImage = /\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)/i.test(
+              downloadUrl,
+            );
+            const kind = isImage ? "image" : "video";
+            assets.push({
+              kind,
+              url: downloadUrl,
+              sourceUrl,
+              filename:
+                kind === "image"
+                  ? buildImageFilename(d, 0, downloadUrl)
+                  : buildVideoFilename(d, sourceUrl),
+              previewUrl: downloadUrl,
+            });
+          }
+
           return assets;
         }
 
@@ -1570,6 +1620,7 @@
               assets.push({
                 kind,
                 url: resolvedUrl,
+                sourceUrl,
                 filename:
                   kind === "image"
                     ? buildImageFilename(d, index, resolvedUrl)
@@ -1577,7 +1628,10 @@
                 previewUrl:
                   kind === "image"
                     ? resolvedUrl
-                    : payload?.data?.thumbnail || d.thumbnail || d.cover || resolvedUrl,
+                    : payload?.data?.thumbnail ||
+                      d.thumbnail ||
+                      d.cover ||
+                      resolvedUrl,
               });
             });
           }
@@ -1595,6 +1649,7 @@
             assets.push({
               kind: "video",
               url: tiktokVideo,
+              sourceUrl,
               filename: buildVideoFilename(d, sourceUrl),
               previewUrl:
                 d.thumbnail || d.cover || d.origin_cover || tiktokVideo,
@@ -1634,6 +1689,7 @@
             assets.push({
               kind: "image",
               url: imageUrl,
+              sourceUrl,
               filename: buildImageFilename(d, index, imageUrl),
               previewUrl: imageUrl,
             });
@@ -1645,6 +1701,7 @@
           assets.push({
             kind: "video",
             url: videoUrl,
+            sourceUrl,
             filename: buildVideoFilename(d, sourceUrl),
             previewUrl: d.thumbnail || d.cover || d.origin_cover || videoUrl,
           });
@@ -1733,8 +1790,11 @@
 
       function inferImageExtension(imageUrl) {
         const tokenInfo = parseSnapcdnTokenInfo(imageUrl);
-        const tokenName = String(tokenInfo?.filename || tokenInfo?.url || "").toLowerCase();
-        if (tokenName.includes(".jpeg") || tokenName.includes(".jpg")) return "jpg";
+        const tokenName = String(
+          tokenInfo?.filename || tokenInfo?.url || "",
+        ).toLowerCase();
+        if (tokenName.includes(".jpeg") || tokenName.includes(".jpg"))
+          return "jpg";
         if (tokenName.includes(".png")) return "png";
         if (tokenName.includes(".webp")) return "webp";
         if (tokenName.includes(".gif")) return "gif";
@@ -1776,6 +1836,19 @@
           .replace(/[^a-z0-9]+/g, "_")
           .replace(/^_|_$/g, "")
           .slice(0, 40);
+      }
+
+      function buildDownloadUrl(mediaUrl, filename, referer = "") {
+        const params = new URLSearchParams({
+          url: mediaUrl,
+          filename,
+        });
+
+        if (referer) {
+          params.set("referer", referer);
+        }
+
+        return `/api/download?${params.toString()}`;
       }
 
       async function fetchMediaInfoWithRetry(mediaUrl, maxAttempts) {
@@ -1824,9 +1897,9 @@
           .forEach((cb) => (cb.checked = false));
       }
 
-      async function downloadSingleImage(imageUrl, filename) {
+      async function downloadSingleImage(imageUrl, filename, referer = "") {
         try {
-          const dlUrl = `/api/download?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
+          const dlUrl = buildDownloadUrl(imageUrl, filename, referer);
           const a = document.createElement("a");
           a.href = dlUrl;
           a.download = filename;
@@ -1862,7 +1935,7 @@
         for (let i = 0; i < selectedAssets.length; i++) {
           const asset = selectedAssets[i];
           const filename = asset.filename || `media_${i + 1}_${Date.now()}`;
-          await downloadSingleImage(asset.url, filename);
+          await downloadSingleImage(asset.url, filename, asset.sourceUrl || "");
         }
       }
 
@@ -1879,7 +1952,11 @@
           for (let i = 0; i < assets.length; i++) {
             const asset = assets[i];
             const assetName = assets.length === 1 ? filename : asset.filename;
-            await triggerDownloadAsset(asset.url, assetName);
+            await triggerDownloadAsset(
+              asset.url,
+              assetName,
+              asset.sourceUrl || "",
+            );
             if (i < assets.length - 1) await sleep(250);
           }
 
@@ -1897,8 +1974,8 @@
         }
       }
 
-      async function triggerDownloadAsset(videoUrl, filename) {
-        const dlUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+      async function triggerDownloadAsset(videoUrl, filename, referer = "") {
+        const dlUrl = buildDownloadUrl(videoUrl, filename, referer);
         const a = document.createElement("a");
         a.href = dlUrl;
         a.download = filename;
@@ -1963,7 +2040,9 @@
         const txt = document.getElementById("analyzeBtnText");
         btn.disabled = on;
         spin.style.display = on ? "block" : "none";
-        txt.textContent = on ? "Đang phân tích…" : "🔎 Phân tích & chọn mục tải";
+        txt.textContent = on
+          ? "Đang phân tích…"
+          : "🔎 Phân tích & chọn mục tải";
       }
 
       function showError(msg) {
