@@ -216,39 +216,79 @@ const server = http.createServer(async (req, res) => {
     try {
       const platform = getPlatform(mediaUrl);
       let data;
+      const maxAttempts = 3;
+      let lastError;
 
-      if (
-        platform === "instagram" ||
-        platform === "facebook" ||
-        platform === "tiktok"
-      ) {
-        const snapsave = await getSnapsave();
-        const raw = await snapsave(mediaUrl);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          if (
+            platform === "instagram" ||
+            platform === "facebook" ||
+            platform === "tiktok"
+          ) {
+            const snapsave = await getSnapsave();
+            const raw = await snapsave(mediaUrl);
 
-        if (raw && raw.success && raw.data) {
-          data = {
-            platform,
-            developer: raw.developer || "snapsave-media-downloader",
-            status: true,
-            title: raw.data.description || raw.data.title || "",
-            thumbnail: raw.data.preview || "",
-            media: Array.isArray(raw.data.media) ? raw.data.media : [],
-          };
-        } else {
-          data = {
-            platform,
-            developer: raw?.developer || "snapsave-media-downloader",
-            status: false,
-            message: raw?.message || "No results found",
-            media: [],
-          };
+            if (raw && raw.success && raw.data) {
+              data = {
+                platform,
+                developer: raw.developer || "snapsave-media-downloader",
+                status: true,
+                title: raw.data.description || raw.data.title || "",
+                thumbnail: raw.data.preview || "",
+                media: Array.isArray(raw.data.media) ? raw.data.media : [],
+              };
+            } else {
+              data = {
+                platform,
+                developer: raw?.developer || "snapsave-media-downloader",
+                status: false,
+                message: raw?.message || "No results found",
+                media: [],
+              };
+            }
+          } else if (platform === "threads") {
+            data = await extractThreadsMedia(mediaUrl);
+          } else if (platform === "douyin") {
+            data = await douyin(mediaUrl);
+          } else {
+            data = await ttdl(mediaUrl);
+          }
+
+          // Kiểm tra xem dữ liệu cào được có thành công hay không
+          let isSuccess = data && data.status !== false && !data.error;
+          if (isSuccess && platform === "douyin") {
+            const result = data.result;
+            if (!result || result.status === false) {
+              isSuccess = false;
+            } else {
+              const links = result.data?.links;
+              if (!Array.isArray(links) || links.length === 0) {
+                isSuccess = false;
+              }
+            }
+          }
+          if (isSuccess && platform === "threads") {
+            const result = data.result;
+            if (!result || result.status === 500 || result.type === "error") {
+              isSuccess = false;
+            }
+          }
+
+          if (isSuccess) {
+            break;
+          }
+        } catch (err) {
+          lastError = err;
         }
-      } else if (platform === "threads") {
-        data = await extractThreadsMedia(mediaUrl);
-      } else if (platform === "douyin") {
-        data = await douyin(mediaUrl);
-      } else {
-        data = await ttdl(mediaUrl);
+
+        if (attempt < maxAttempts) {
+          await sleep(600 * attempt);
+        }
+      }
+
+      if (!data && lastError) {
+        throw lastError;
       }
 
       sendJson(res, { platform, ...data });

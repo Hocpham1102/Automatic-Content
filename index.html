@@ -1096,7 +1096,7 @@
           updateBatchItem(i, "loading", "Đang xử lý");
 
           try {
-            const data = await fetchMediaInfoWithRetry(mediaUrl, 2);
+            const data = await fetchMediaInfoWithRetry(mediaUrl, 3);
 
             if (data && data.status !== false) {
               const assets = prioritizeHighestQualityAssets(
@@ -1480,6 +1480,7 @@
               previewUrl: mediaType.includes("image")
                 ? mediaUrl
                 : item?.thumbnail || item?.preview || mediaUrl,
+              quality: item?.quality || item?.resolution || item?.format || "",
             });
           });
 
@@ -1508,6 +1509,7 @@
               sourceUrl,
               filename: buildImageFilename(d, index, imageUrl),
               previewUrl: imageUrl,
+              quality: typeof item === "object" ? (item?.quality || item?.resolution || "") : "",
             });
           });
           return assets;
@@ -1527,6 +1529,7 @@
               sourceUrl,
               filename: buildVideoFilename(d, sourceUrl),
               previewUrl: d.thumbnail || d.cover || videoUrl,
+              quality: videoUrl === (payload?.HD || d.HD) ? "HD" : "SD",
             });
           }
           return assets;
@@ -1543,6 +1546,7 @@
               sourceUrl,
               filename: buildImageFilename(d, 0, threadPayload.image),
               previewUrl: threadPayload.image,
+              quality: "",
             });
           }
 
@@ -1554,6 +1558,7 @@
               sourceUrl,
               filename: buildVideoFilename(d, sourceUrl),
               previewUrl: threadPayload.image || threadPayload.video,
+              quality: "",
             });
           }
 
@@ -1577,6 +1582,7 @@
                   ? buildImageFilename(d, 0, downloadUrl)
                   : buildVideoFilename(d, sourceUrl),
               previewUrl: downloadUrl,
+              quality: "",
             });
           }
 
@@ -1632,6 +1638,7 @@
                       d.thumbnail ||
                       d.cover ||
                       resolvedUrl,
+                quality: item?.quality || item?.resolution || "",
               });
             });
           }
@@ -1653,6 +1660,7 @@
               filename: buildVideoFilename(d, sourceUrl),
               previewUrl:
                 d.thumbnail || d.cover || d.origin_cover || tiktokVideo,
+              quality: "",
             });
           }
 
@@ -1692,6 +1700,7 @@
               sourceUrl,
               filename: buildImageFilename(d, index, imageUrl),
               previewUrl: imageUrl,
+              quality: "",
             });
           });
           return assets;
@@ -1704,36 +1713,79 @@
             sourceUrl,
             filename: buildVideoFilename(d, sourceUrl),
             previewUrl: d.thumbnail || d.cover || d.origin_cover || videoUrl,
+            quality: "",
           });
         }
 
         return assets;
       }
 
+      function getAssetGroupKey(asset) {
+        const url = String(asset?.url || "");
+        try {
+          const urlObj = new URL(url);
+          let pathname = urlObj.pathname;
+
+          // Remove Douyin template and resolution suffixes (e.g. ~tplv-...)
+          pathname = pathname.replace(/~tplv-[a-z0-9-]+(:\d+:\d+:\w+)?/i, "");
+
+          // Check if pathname is generic or too short
+          const segments = pathname.split("/").filter(Boolean);
+          const filename = segments[segments.length - 1] || "";
+          const genericNames = ["download", "get", "api", "video", "image", "media", "play", "info", "stream"];
+          
+          if (
+            pathname.length < 5 || 
+            segments.length === 0 || 
+            genericNames.includes(filename.toLowerCase())
+          ) {
+            // Generic URL, use the full URL as key (no grouping)
+            return url;
+          }
+
+          // Return cleaned pathname as group key
+          return pathname.toLowerCase();
+        } catch {
+          return url;
+        }
+      }
+
       function prioritizeHighestQualityAssets(assets) {
         if (!Array.isArray(assets) || !assets.length) return [];
 
-        const images = assets.filter((a) => a.kind === "image");
-        const videos = assets.filter((a) => a.kind === "video");
-        if (!videos.length) return assets;
-
-        let bestVideo = videos[0];
-        let bestScore = getAssetQualityScore(videos[0]);
-        for (let i = 1; i < videos.length; i++) {
-          const score = getAssetQualityScore(videos[i]);
-          if (score > bestScore) {
-            bestScore = score;
-            bestVideo = videos[i];
+        // Group assets by their unique media key (based on filename/path)
+        const groups = {};
+        assets.forEach((asset) => {
+          const key = getAssetGroupKey(asset);
+          if (!groups[key]) {
+            groups[key] = [];
           }
+          groups[key].push(asset);
+        });
+
+        // For each group, pick the one with the highest quality score
+        const prioritized = [];
+        for (const key in groups) {
+          const groupAssets = groups[key];
+          let bestAsset = groupAssets[0];
+          let bestScore = getAssetQualityScore(groupAssets[0]);
+          for (let i = 1; i < groupAssets.length; i++) {
+            const score = getAssetQualityScore(groupAssets[i]);
+            if (score > bestScore) {
+              bestScore = score;
+              bestAsset = groupAssets[i];
+            }
+          }
+          prioritized.push(bestAsset);
         }
 
-        // Keep all images, but only keep the highest-quality video candidate.
-        return [...images, bestVideo];
+        return prioritized;
       }
 
       function getAssetQualityScore(asset) {
         const url = String(asset?.url || "");
-        const text = url.toLowerCase();
+        const qualityText = String(asset?.quality || "").toLowerCase();
+        const text = (url + " " + qualityText).toLowerCase();
         let score = 0;
 
         const dimMatch =
@@ -1870,6 +1922,27 @@
               data = JSON.parse(text);
             } catch {
               throw new Error("INVALID_JSON");
+            }
+
+            let isFailed = data.status === false || !!data.error;
+            if (!isFailed) {
+              if (data.platform === "douyin") {
+                const result = data.result;
+                if (!result || result.status === false) {
+                  isFailed = true;
+                }
+              } else if (data.platform === "threads") {
+                const result = data.result;
+                if (!result || result.status === 500 || result.type === "error") {
+                  isFailed = true;
+                }
+              }
+            }
+
+            if (isFailed) {
+              if (attempt < maxAttempts) {
+                throw new Error("SCRAPE_FAILED");
+              }
             }
 
             return data;
