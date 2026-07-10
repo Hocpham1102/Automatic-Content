@@ -4,6 +4,7 @@
   "description": "TikTok video downloader - không watermark",
   "main": "server.js",
   "scripts": {
+    "build": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./yt-dlp && chmod +x ./yt-dlp",
     "start": "node server.js",
     "dev": "node server.js"
   },

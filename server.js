@@ -12,6 +12,12 @@ const url = require("url");
 const { spawn } = require("child_process");
 const { igdl, ttdl, fbdown, douyin, threads } = require("btch-downloader");
 
+// Ưu tiên file yt-dlp local (được cài bởi build script trên Render),
+// nếu không có thì dùng yt-dlp từ system PATH
+const YTDLP_BIN = fs.existsSync(path.join(__dirname, "yt-dlp"))
+  ? path.join(__dirname, "yt-dlp")
+  : "yt-dlp";
+
 let snapsaveLoader;
 
 async function getSnapsave() {
@@ -412,12 +418,31 @@ function ytdlpFetchPlaylist(profileUrl, browser) {
     ];
     if (browser) args.push("--cookies-from-browser", browser);
     args.push(profileUrl);
-    const proc = spawn("yt-dlp", args);
+
+    let proc;
+    try {
+      proc = spawn(YTDLP_BIN, args);
+    } catch (spawnErr) {
+      return reject(new Error("yt-dlp không được cài hoặc không tìm thấy trong PATH: " + spawnErr.message));
+    }
+
     let stdout = "";
     let stderr = "";
+
+    // Timeout 25s để tránh Render kill request với 502
+    const timer = setTimeout(() => {
+      proc.kill();
+      reject(new Error("yt-dlp timeout sau 25 giây"));
+    }, 25000);
+
     proc.stdout.on("data", (d) => (stdout += d));
     proc.stderr.on("data", (d) => (stderr += d));
+    proc.on("error", (err) => {
+      clearTimeout(timer);
+      reject(new Error("Không thể chạy yt-dlp: " + err.message));
+    });
     proc.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) {
         return reject(new Error(stderr.slice(-500) || `yt-dlp exited ${code}`));
       }
@@ -468,7 +493,14 @@ function startProfileDownloadJob(profileUrl, outputDir, browser) {
   if (browser) args.push("--cookies-from-browser", browser);
   args.push("-o", outputTemplate, profileUrl);
 
-  const proc = spawn("yt-dlp", args);
+  let proc;
+  try {
+    proc = spawn(YTDLP_BIN, args);
+  } catch (spawnErr) {
+    job.status = "error";
+    job.error = "yt-dlp không được cài: " + spawnErr.message;
+    return jobId;
+  }
 
   proc.stdout.on("data", (data) => {
     const lines = data.toString().split("\n").filter(Boolean);
@@ -482,6 +514,12 @@ function startProfileDownloadJob(profileUrl, outputDir, browser) {
       const totalMatch = line.match(/(\d+) videos/);
       if (totalMatch) job.total = parseInt(totalMatch[1]);
     }
+  });
+
+  proc.on("error", (err) => {
+    job.status = "error";
+    job.error = "Không thể chạy yt-dlp: " + err.message;
+    job.lastLog = job.error;
   });
 
   proc.stderr.on("data", (data) => {
