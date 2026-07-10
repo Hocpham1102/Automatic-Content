@@ -18,6 +18,9 @@ const YTDLP_BIN = fs.existsSync(path.join(__dirname, "yt-dlp"))
   ? path.join(__dirname, "yt-dlp")
   : "yt-dlp";
 
+// Render và các server không có Chrome → bỏ qua --cookies-from-browser
+const IS_SERVER_ENV = !!(process.env.RENDER || process.env.IS_SERVER);
+
 let snapsaveLoader;
 
 async function getSnapsave() {
@@ -416,7 +419,7 @@ function ytdlpFetchPlaylist(profileUrl, browser) {
       "--dump-single-json",
       "--no-warnings",
     ];
-    if (browser) args.push("--cookies-from-browser", browser);
+    if (browser && !IS_SERVER_ENV) args.push("--cookies-from-browser", browser);
     args.push(profileUrl);
 
     let proc;
@@ -490,7 +493,7 @@ function startProfileDownloadJob(profileUrl, outputDir, browser) {
     "--merge-output-format", "mp4",
     "--newline",
   ];
-  if (browser) args.push("--cookies-from-browser", browser);
+  if (browser && !IS_SERVER_ENV) args.push("--cookies-from-browser", browser);
   args.push("-o", outputTemplate, profileUrl);
 
   let proc;
