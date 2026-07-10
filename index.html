@@ -876,6 +876,312 @@
           justify-content: center;
         }
       }
+
+      /* ── Profile Downloader Tab ── */
+      .mode-tabs {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 20px;
+        padding: 0 24px;
+      }
+
+      .mode-tab {
+        padding: 9px 22px;
+        border-radius: 30px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.22s;
+        letter-spacing: 0.2px;
+      }
+      .mode-tab:hover {
+        border-color: rgba(255, 45, 85, 0.4);
+        color: var(--text);
+      }
+      .mode-tab.active {
+        background: linear-gradient(135deg, var(--accent), #d4004a);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 4px 16px rgba(255, 45, 85, 0.35);
+      }
+
+      #profileSection {
+        display: none;
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 700px;
+        padding: 0 24px;
+        margin-bottom: 40px;
+        flex-direction: column;
+        gap: 16px;
+      }
+      #profileSection.active {
+        display: flex;
+      }
+
+      .profile-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .profile-card label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 0.3px;
+      }
+
+      .profile-input-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .profile-input {
+        flex: 1;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: "Inter", sans-serif;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .profile-input:focus {
+        border-color: rgba(255, 45, 85, 0.5);
+      }
+      .profile-input::placeholder {
+        color: var(--muted);
+      }
+
+      .profile-section-divider {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 0;
+      }
+
+      /* Video list preview */
+      .profile-video-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 320px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .profile-video-list::-webkit-scrollbar {
+        width: 5px;
+      }
+      .profile-video-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .profile-video-list::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+      }
+
+      .pv-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        transition: border-color 0.2s;
+      }
+      .pv-item:hover {
+        border-color: rgba(255, 45, 85, 0.3);
+      }
+
+      .pv-thumb {
+        width: 48px;
+        height: 64px;
+        border-radius: 6px;
+        object-fit: cover;
+        background: rgba(255,255,255,0.05);
+        flex-shrink: 0;
+      }
+
+      .pv-thumb-placeholder {
+        width: 48px;
+        height: 64px;
+        border-radius: 6px;
+        background: var(--surface);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+      }
+
+      .pv-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .pv-title {
+        font-size: 0.83rem;
+        font-weight: 500;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 4px;
+      }
+
+      .pv-meta {
+        font-size: 0.73rem;
+        color: var(--muted);
+      }
+
+      .pv-idx {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.2);
+        min-width: 24px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+
+      /* Progress */
+      .progress-wrap {
+        background: var(--surface2);
+        border-radius: 8px;
+        overflow: hidden;
+        height: 8px;
+        margin-top: 4px;
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--purple));
+        border-radius: 8px;
+        width: 0%;
+        transition: width 0.4s ease;
+      }
+
+      .progress-labels {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 6px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .job-log {
+        background: rgba(0,0,0,0.35);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        color: #9fb8d8;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 4px;
+      }
+
+      .profile-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .profile-btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 11px 16px;
+        border-radius: 12px;
+        border: none;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.22s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+      }
+      .profile-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .profile-btn-primary {
+        background: linear-gradient(135deg, var(--accent), #d4004a);
+        color: #fff;
+      }
+      .profile-btn-primary:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 22px rgba(255,45,85,0.38);
+      }
+      .profile-btn-secondary {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .profile-btn-secondary:not(:disabled):hover {
+        border-color: rgba(255,255,255,0.2);
+      }
+      .profile-btn-teal {
+        background: linear-gradient(135deg, var(--teal), #009e7f);
+        color: #fff;
+      }
+      .profile-btn-teal:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 22px rgba(0,212,170,0.35);
+      }
+
+      .profile-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .badge-running {
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        color: #fbbf24;
+      }
+      .badge-done {
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #4ade80;
+      }
+      .badge-error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+      }
+
+      .profile-info-note {
+        font-size: 0.78rem;
+        color: var(--muted);
+        line-height: 1.6;
+        padding: 10px 14px;
+        background: rgba(124, 92, 252, 0.07);
+        border: 1px solid rgba(124, 92, 252, 0.18);
+        border-radius: 8px;
+      }
     </style>
   </head>
   <body>
@@ -911,8 +1217,14 @@
       </p>
     </div>
 
-    <!-- Input -->
-    <div class="card">
+    <!-- Mode Tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabSingle" onclick="switchMode('single')">🔗 Tải theo link</button>
+      <button class="mode-tab" id="tabProfile" onclick="switchMode('profile')">👤 Tải cả Profile</button>
+    </div>
+
+    <!-- Input (single link mode) -->
+    <div id="singleSection" class="card">
       <div class="input-wrap">
         <span class="input-icon">🔗</span>
         <textarea
@@ -929,6 +1241,83 @@
       <div class="input-hint">
         Dán link rồi nhấn phân tích, sau đó chọn video/ảnh muốn tải. Hệ thống sẽ
         không tự động tải xuống.
+      </div>
+    </div>
+
+    <!-- Profile Section -->
+    <div id="profileSection">
+      <!-- Step 1: URL input -->
+      <div class="profile-card">
+        <label>🔗 Link trang cá nhân TikTok</label>
+        <div class="profile-input-row">
+          <input
+            type="text"
+            id="profileUrlInput"
+            class="profile-input"
+            placeholder="https://www.tiktok.com/@username hoặc @username"
+            autocomplete="off"
+          />
+          <button class="profile-btn profile-btn-secondary" onclick="pasteProfileUrl()" style="flex: 0 0 auto; min-width: auto; padding: 11px 14px;">📋</button>
+        </div>
+        <div class="profile-actions">
+          <button class="profile-btn profile-btn-primary" id="fetchListBtn" onclick="fetchProfileList()">
+            <span class="action-spinner" id="fetchListSpinner" style="width:14px;height:14px;border-width:2px;"></span>
+            <span id="fetchListBtnText">🔎 Xem danh sách video</span>
+          </button>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <label style="flex-shrink:0;">🌐 Dùng cookie từ trình duyệt:</label>
+          <select id="browserSelect" class="profile-input" style="flex:1; min-width:140px; padding:8px 12px;">
+            <option value="chrome">Chrome (mặc định)</option>
+            <option value="edge">Microsoft Edge</option>
+            <option value="firefox">Firefox</option>
+            <option value="">Không dùng cookie</option>
+          </select>
+        </div>
+        <div class="profile-info-note">
+          ℹ️ Nếu gặp lỗi 403, hãy đảm bảo bạn đã đăng nhập TikTok trên trình duyệt được chọn — yt-dlp sẽ mượn cookie đăng nhập của bạn để vượt qua kiểm tra của TikTok.
+        </div>
+      </div>
+
+      <!-- Step 2: Video preview list (hidden until fetched) -->
+      <div class="profile-card" id="profileListCard" style="display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <label id="profileListLabel">📋 Danh sách video</label>
+          <span id="profileListCount" style="font-size:0.8rem;color:var(--muted);"></span>
+        </div>
+        <div class="profile-video-list" id="profileVideoList"></div>
+      </div>
+
+      <!-- Step 3: Download config (hidden until fetched) -->
+      <div class="profile-card" id="profileDownloadCard" style="display:none;">
+        <label>📁 Thư mục lưu video (để trống = lưu vào ./downloads)</label>
+        <input
+          type="text"
+          id="profileOutputDir"
+          class="profile-input"
+          placeholder="Ví dụ: D:\TikTok\@username  (để trống = thư mục downloads trong dự án)"
+        />
+        <div class="profile-actions">
+          <button class="profile-btn profile-btn-teal" id="startDownloadBtn" onclick="startProfileDownload()">
+            ⬇ Tải tất cả video
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 4: Progress (hidden until job starts) -->
+      <div class="profile-card" id="profileProgressCard" style="display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <label>⏳ Tiến độ tải xuống</label>
+          <span id="jobStatusBadge" class="profile-status-badge badge-running">🔄 Đang chạy</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="profileProgressBar"></div>
+        </div>
+        <div class="progress-labels">
+          <span id="progressText">0 / ? video</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="job-log" id="jobLog">Khởi tạo…</div>
       </div>
     </div>
 
@@ -2129,6 +2518,215 @@
       function hideResult() {
         document.getElementById("result").style.display = "none";
       }
+      // ── Profile Tab Logic ──
+      let currentProfileVideos = [];
+      let currentJobId = null;
+      let jobPollInterval = null;
+
+      function switchMode(mode) {
+        const single = document.getElementById('singleSection');
+        const profile = document.getElementById('profileSection');
+        const tabSingle = document.getElementById('tabSingle');
+        const tabProfile = document.getElementById('tabProfile');
+        if (mode === 'single') {
+          single.style.display = 'block';
+          profile.classList.remove('active');
+          tabSingle.classList.add('active');
+          tabProfile.classList.remove('active');
+        } else {
+          single.style.display = 'none';
+          profile.classList.add('active');
+          tabSingle.classList.remove('active');
+          tabProfile.classList.add('active');
+        }
+      }
+
+      function normalizeProfileUrl(input) {
+        const trimmed = input.trim();
+        // Handle @username shorthand
+        if (trimmed.startsWith('@') && !trimmed.includes('/')) {
+          return 'https://www.tiktok.com/' + trimmed;
+        }
+        return trimmed;
+      }
+
+      async function pasteProfileUrl() {
+        try {
+          const text = await navigator.clipboard.readText();
+          document.getElementById('profileUrlInput').value = text.trim();
+        } catch {
+          document.getElementById('profileUrlInput').focus();
+          alert('Hãy nhấn Ctrl+V để dán link.');
+        }
+      }
+
+      async function fetchProfileList() {
+        const raw = document.getElementById('profileUrlInput').value;
+        const profileUrl = normalizeProfileUrl(raw);
+        if (!profileUrl) {
+          alert('Vui lòng nhập link hoặc @username.');
+          return;
+        }
+
+        // UI: loading
+        const btn = document.getElementById('fetchListBtn');
+        const spinner = document.getElementById('fetchListSpinner');
+        const btnText = document.getElementById('fetchListBtnText');
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        btnText.textContent = 'Đang lấy danh sách…';
+        document.getElementById('profileListCard').style.display = 'none';
+        document.getElementById('profileDownloadCard').style.display = 'none';
+
+        try {
+          const browser = document.getElementById('browserSelect').value;
+          const resp = await fetch('/api/profile/fetch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileUrl, browser }),
+          });
+          const data = await resp.json();
+
+          if (!resp.ok || data.error) {
+            throw new Error(data.error || 'Không lấy được danh sách');
+          }
+
+          currentProfileVideos = data.videos || [];
+          renderProfileVideoList(currentProfileVideos);
+
+          document.getElementById('profileListCard').style.display = 'block';
+          document.getElementById('profileDownloadCard').style.display = 'block';
+          document.getElementById('profileOutputDir').placeholder =
+            `Ví dụ: D:\\TikTok (để trống = ./downloads)`;
+        } catch (err) {
+          alert('Lỗi: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          spinner.style.display = 'none';
+          btnText.textContent = '🔎 Xem danh sách video';
+        }
+      }
+
+      function formatDurationShort(sec) {
+        if (!sec) return '';
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return m + ':' + String(s).padStart(2, '0');
+      }
+
+      function formatUploadDate(d) {
+        if (!d || d.length !== 8) return d || '';
+        return d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+      }
+
+      function renderProfileVideoList(videos) {
+        const list = document.getElementById('profileVideoList');
+        const count = document.getElementById('profileListCount');
+        count.textContent = `${videos.length} video`;
+        list.innerHTML = '';
+
+        if (!videos.length) {
+          list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">Không tìm thấy video nào.</div>';
+          return;
+        }
+
+        videos.forEach((v, i) => {
+          const item = document.createElement('div');
+          item.className = 'pv-item';
+          const thumb = v.thumbnail
+            ? `<img class="pv-thumb" src="${escapeHtml(v.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><div class="pv-thumb-placeholder" style="display:none;">🎬</div>`
+            : `<div class="pv-thumb-placeholder">🎬</div>`;
+          const dur = formatDurationShort(v.duration);
+          const date = formatUploadDate(v.upload_date);
+          const meta = [dur, date].filter(Boolean).join(' · ');
+          item.innerHTML = `
+            ${thumb}
+            <div class="pv-info">
+              <div class="pv-title">${escapeHtml(v.title)}</div>
+              ${meta ? `<div class="pv-meta">${escapeHtml(meta)}</div>` : ''}
+            </div>
+            <div class="pv-idx">#${i + 1}</div>
+          `;
+          list.appendChild(item);
+        });
+      }
+
+      async function startProfileDownload() {
+        const raw = document.getElementById('profileUrlInput').value;
+        const profileUrl = normalizeProfileUrl(raw);
+        const outputDir = document.getElementById('profileOutputDir').value.trim();
+
+        if (!profileUrl) { alert('Nhập link profile trước.'); return; }
+
+        const btn = document.getElementById('startDownloadBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang khởi động…';
+
+        try {
+          const browser = document.getElementById('browserSelect').value;
+          const resp = await fetch('/api/profile/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileUrl, outputDir, browser }),
+          });
+          const data = await resp.json();
+          if (!resp.ok || data.error) throw new Error(data.error || 'Lỗi khởi tạo');
+
+          currentJobId = data.jobId;
+          document.getElementById('profileProgressCard').style.display = 'block';
+          document.getElementById('profileProgressCard').scrollIntoView({ behavior: 'smooth' });
+          startJobPolling(currentJobId, currentProfileVideos.length);
+        } catch (err) {
+          alert('Lỗi: ' + err.message);
+          btn.disabled = false;
+          btn.textContent = '⬇ Tải tất cả video';
+        }
+      }
+
+      function startJobPolling(jobId, knownTotal) {
+        if (jobPollInterval) clearInterval(jobPollInterval);
+
+        async function poll() {
+          try {
+            const resp = await fetch(`/api/profile/status?jobId=${jobId}`);
+            const data = await resp.json();
+
+            const total = data.total || knownTotal || 0;
+            const downloaded = data.downloaded || 0;
+            const pct = total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0;
+
+            document.getElementById('profileProgressBar').style.width = pct + '%';
+            document.getElementById('progressText').textContent = `${downloaded} / ${total || '?'} video`;
+            document.getElementById('progressPct').textContent = pct + '%';
+            document.getElementById('jobLog').textContent = data.lastLog || '…';
+
+            const badge = document.getElementById('jobStatusBadge');
+            if (data.status === 'done') {
+              badge.className = 'profile-status-badge badge-done';
+              badge.textContent = '✅ Hoàn tất';
+              document.getElementById('profileProgressBar').style.width = '100%';
+              document.getElementById('progressText').textContent = `${downloaded} video đã lưu`;
+              document.getElementById('progressPct').textContent = '100%';
+              clearInterval(jobPollInterval);
+              jobPollInterval = null;
+              document.getElementById('startDownloadBtn').textContent = '✅ Đã tải xong';
+            } else if (data.status === 'error') {
+              badge.className = 'profile-status-badge badge-error';
+              badge.textContent = '❌ Lỗi';
+              clearInterval(jobPollInterval);
+              jobPollInterval = null;
+              document.getElementById('startDownloadBtn').disabled = false;
+              document.getElementById('startDownloadBtn').textContent = '⬇ Thử lại';
+            }
+          } catch (e) {
+            console.warn('Poll error:', e);
+          }
+        }
+
+        poll();
+        jobPollInterval = setInterval(poll, 2000);
+      }
+
     </script>
   </body>
 </html>
