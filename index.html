@@ -1139,6 +1139,11 @@
       .profile-btn-secondary:not(:disabled):hover {
         border-color: rgba(255,255,255,0.2);
       }
+      .media-filter-btn.active {
+        background: rgba(0, 212, 170, 0.12);
+        border-color: var(--teal);
+        color: var(--teal);
+      }
       .profile-btn-teal {
         background: linear-gradient(135deg, var(--teal), #009e7f);
         color: #fff;
@@ -1290,13 +1295,25 @@
 
       <!-- Step 3: Download config (hidden until fetched) -->
       <div class="profile-card" id="profileDownloadCard" style="display:none;">
+        <label>🎯 Chọn loại nội dung tải về</label>
+        <div id="mediaTypeFilter" style="display:flex; gap:6px; margin:8px 0 12px;">
+          <button class="profile-btn profile-btn-secondary media-filter-btn active" data-filter="all" onclick="setMediaFilter('all')">
+            💾 Tất cả
+          </button>
+          <button class="profile-btn profile-btn-secondary media-filter-btn" data-filter="video" onclick="setMediaFilter('video')">
+            🎥 Chỉ Video
+          </button>
+          <button class="profile-btn profile-btn-secondary media-filter-btn" data-filter="image" onclick="setMediaFilter('image')">
+            🖼 Chỉ Ảnh
+          </button>
+        </div>
         <div class="profile-actions">
           <button class="profile-btn profile-btn-teal" id="startDownloadBtn" onclick="startProfileDownload()">
             ⬇ Tải tất cả về máy
           </button>
         </div>
         <div style="font-size:0.77rem; color:var(--muted); margin-top:8px; line-height:1.6;">
-          ℹ️ Video sẽ được tải tuần tự về thư mục <strong>Downloads</strong> của trình duyệt. Giữ tab mở cho đến khi hoàn tất.
+          ℹ️ Nội dung sẽ được tải tuần tự về thư mục <strong>Downloads</strong> của trình duyệt. Giữ tab mở cho đến khi hoàn tất.
         </div>
       </div>
 
@@ -2650,11 +2667,25 @@
       }
 
       let _profileDownloadCancelled = false;
+      let _selectedMediaFilter = 'all'; // 'all' | 'video' | 'image'
+
+      function setMediaFilter(filter) {
+        _selectedMediaFilter = filter;
+        document.querySelectorAll('.media-filter-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+        // Cập nhật text nút tải
+        const dlBtn = document.getElementById('startDownloadBtn');
+        if (dlBtn && !dlBtn.disabled) {
+          const labels = { all: '⬇ Tải tất cả về máy', video: '⬇ Tải video về máy', image: '⬇ Tải ảnh về máy' };
+          dlBtn.textContent = labels[filter] || labels.all;
+        }
+      }
 
       function cancelProfileDownload() {
         _profileDownloadCancelled = true;
         document.getElementById('cancelDownloadBtn').disabled = true;
-        document.getElementById('jobLog').textContent = '⏹ Đang dừng sau video hiện tại…';
+        document.getElementById('jobLog').textContent = '⏹ Đang dừng sau mục hiện tại…';
       }
 
       async function startProfileDownload() {
@@ -2662,6 +2693,9 @@
           alert('Vui lòng xem danh sách video trước.');
           return;
         }
+
+        const filter = _selectedMediaFilter;
+        const filterLabel = filter === 'video' ? 'video' : filter === 'image' ? 'ảnh' : 'nội dung';
 
         const btn = document.getElementById('startDownloadBtn');
         const cancelBtn = document.getElementById('cancelDownloadBtn');
@@ -2681,12 +2715,13 @@
 
         const total = currentProfileVideos.length;
         let downloaded = 0;
+        let skipped = 0;
         let failed = 0;
 
         function updateProgress(i, logMsg) {
           const pct = total > 0 ? Math.min(100, Math.round((i / total) * 100)) : 0;
           document.getElementById('profileProgressBar').style.width = pct + '%';
-          document.getElementById('progressText').textContent = `${i} / ${total} video`;
+          document.getElementById('progressText').textContent = `${i} / ${total}`;
           document.getElementById('progressPct').textContent = pct + '%';
           if (logMsg) document.getElementById('jobLog').textContent = logMsg;
         }
@@ -2704,35 +2739,62 @@
             const infoData = await infoResp.json();
 
             if (!infoResp.ok || infoData.error || infoData.status === false) {
-              throw new Error(infoData.error || 'Không lấy được thông tin video');
+              throw new Error(infoData.error || 'Không lấy được thông tin');
             }
 
-            const assets = prioritizeHighestQualityAssets(
+            const allAssets = prioritizeHighestQualityAssets(
               extractDownloadAssets(infoData, video.url)
             );
-            const videoAsset = assets.find(a => a.kind === 'video');
-            if (!videoAsset) throw new Error('Không tìm thấy link video');
 
+            // Lọc theo filter
+            let targetAssets;
+            if (filter === 'video') {
+              targetAssets = allAssets.filter(a => a.kind === 'video');
+            } else if (filter === 'image') {
+              targetAssets = allAssets.filter(a => a.kind === 'image');
+            } else {
+              targetAssets = allAssets;
+            }
+
+            if (!targetAssets.length) {
+              skipped++;
+              updateProgress(i + 1, `⏩ [${i + 1}/${total}] Bỏ qua (không có ${filterLabel}): ${shortTitle}`);
+              if (i < total - 1 && !_profileDownloadCancelled) await sleep(500);
+              continue;
+            }
+
+            // Tải từng asset phù hợp
             const date = video.upload_date || '';
-            const filename = `tiktok_${date}_${slugify(video.title) || video.id || Date.now()}.mp4`;
+            for (let j = 0; j < targetAssets.length; j++) {
+              const asset = targetAssets[j];
+              let filename;
+              if (asset.kind === 'image') {
+                const ext = inferImageExtension(asset.url);
+                filename = `tiktok_${date}_${slugify(video.title) || video.id || Date.now()}_${j + 1}.${ext}`;
+              } else {
+                filename = `tiktok_${date}_${slugify(video.title) || video.id || Date.now()}.mp4`;
+              }
 
-            // Trigger download về trình duyệt qua proxy /api/download
-            const dlUrl = buildDownloadUrl(videoAsset.url, filename, video.url);
-            const a = document.createElement('a');
-            a.href = dlUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+              const dlUrl = buildDownloadUrl(asset.url, filename, video.url);
+              const a = document.createElement('a');
+              a.href = dlUrl;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+
+              if (j < targetAssets.length - 1) await sleep(400);
+            }
 
             downloaded++;
-            updateProgress(i + 1, `✅ [${i + 1}/${total}] Đã tải: ${shortTitle}`);
+            const assetDesc = targetAssets.length > 1 ? `${targetAssets.length} file` : (targetAssets[0].kind === 'image' ? 'ảnh' : 'video');
+            updateProgress(i + 1, `✅ [${i + 1}/${total}] Đã tải ${assetDesc}: ${shortTitle}`);
           } catch (err) {
             failed++;
-            updateProgress(i + 1, `⚠️ [${i + 1}/${total}] Bỏ qua: ${shortTitle} — ${err.message}`);
+            updateProgress(i + 1, `⚠️ [${i + 1}/${total}] Lỗi: ${shortTitle} — ${err.message}`);
           }
 
-          // Delay 1.5s giữa các lần tải để tránh rate limit
+          // Delay giữa các lần tải
           if (i < total - 1 && !_profileDownloadCancelled) await sleep(1500);
         }
 
@@ -2741,20 +2803,23 @@
         document.getElementById('profileProgressBar').style.width = '100%';
         document.getElementById('progressPct').textContent = '100%';
 
+        const summary = [];
+        summary.push(`${downloaded} bài đã tải`);
+        if (skipped) summary.push(`${skipped} bỏ qua`);
+        if (failed) summary.push(`${failed} lỗi`);
+
         if (_profileDownloadCancelled) {
           badge.className = 'profile-status-badge badge-error';
           badge.textContent = '⏹ Đã dừng';
-          document.getElementById('progressText').textContent = `${downloaded} / ${total} video`;
-          document.getElementById('jobLog').textContent =
-            `Đã dừng. Tải được ${downloaded} video${failed ? `, bỏ qua ${failed} lỗi` : ''}.`;
+          document.getElementById('progressText').textContent = `${downloaded} / ${total}`;
+          document.getElementById('jobLog').textContent = `Đã dừng. ${summary.join(' · ')}.`;
           btn.disabled = false;
           btn.textContent = '⬇ Tiếp tục tải';
         } else {
           badge.className = 'profile-status-badge badge-done';
           badge.textContent = '✅ Hoàn tất';
-          document.getElementById('progressText').textContent = `${downloaded} / ${total} video đã tải`;
-          document.getElementById('jobLog').textContent =
-            `✅ Hoàn tất! ${downloaded} video đã về máy${failed ? ` · ${failed} video bị lỗi` : ''}.`;
+          document.getElementById('progressText').textContent = `${downloaded} / ${total}`;
+          document.getElementById('jobLog').textContent = `✅ Hoàn tất! ${summary.join(' · ')}.`;
           btn.disabled = false;
           btn.textContent = '✅ Tải lại';
         }
