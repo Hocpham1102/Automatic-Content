@@ -394,11 +394,11 @@ function ytdlpFetchPlaylist(profileUrl, browser) {
     let stdout = "";
     let stderr = "";
 
-    // Timeout 25s để tránh Render kill request với 502
+    // Timeout 90s để tránh các nền tảng serverless/hosting ngắt request
     const timer = setTimeout(() => {
       proc.kill();
-      reject(new Error("yt-dlp timeout sau 25 giây"));
-    }, 25000);
+      reject(new Error("yt-dlp timeout sau 90 giây. Thử lại hoặc hồ sơ quá lớn!"));
+    }, 90000);
 
     proc.stdout.on("data", (d) => (stdout += d));
     proc.stderr.on("data", (d) => (stderr += d));
