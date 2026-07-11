@@ -2377,14 +2377,7 @@
 
       async function downloadSingleImage(imageUrl, filename, referer = "") {
         try {
-          const dlUrl = buildDownloadUrl(imageUrl, filename, referer);
-          const a = document.createElement("a");
-          a.href = dlUrl;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          await sleep(500);
+          await downloadViaBlobWithRetry(imageUrl, filename, 3, referer);
         } catch (err) {
           console.error("Single image download failed:", err);
           showError("Tải ảnh thất bại. Thử lại sau.");
@@ -2453,13 +2446,7 @@
       }
 
       async function triggerDownloadAsset(videoUrl, filename, referer = "") {
-        const dlUrl = buildDownloadUrl(videoUrl, filename, referer);
-        const a = document.createElement("a");
-        a.href = dlUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        await downloadViaBlobWithRetry(videoUrl, filename, 3, referer);
       }
 
       function parseInfoError(err) {
@@ -2771,13 +2758,7 @@
                 filename = `${platform}_${date}_${slugify(video.title) || video.id || Date.now()}.mp4`;
               }
 
-              const dlUrl = buildDownloadUrl(asset.url, filename, video.url);
-              const a = document.createElement('a');
-              a.href = dlUrl;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+              await downloadViaBlobWithRetry(asset.url, filename, 3, video.url);
 
               if (j < targetAssets.length - 1) await sleep(400);
             }
