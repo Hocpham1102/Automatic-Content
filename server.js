@@ -357,41 +357,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── POST /api/profile/download – bắt đầu tải toàn bộ profile ──
-  if (pathname === "/api/profile/download" && req.method === "POST") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try {
-        const { profileUrl, outputDir, browser } = JSON.parse(body || "{}");
-        if (!profileUrl) return sendJson(res, { error: "Missing profileUrl" }, 400);
-
-        const jobId = startProfileDownloadJob(profileUrl, outputDir, browser);
-        sendJson(res, { ok: true, jobId });
-      } catch (err) {
-        sendJson(res, { error: err.message }, 500);
-      }
-    });
-    return;
-  }
-
-  // ── GET /api/profile/status?jobId=<id> – kiểm tra tiến độ job ──
-  if (pathname === "/api/profile/status") {
-    const jobId = query.jobId;
-    if (!jobId) return sendJson(res, { error: "Missing jobId" }, 400);
-    const job = downloadJobs.get(jobId);
-    if (!job) return sendJson(res, { error: "Job not found" }, 404);
-    sendJson(res, {
-      jobId,
-      status: job.status,
-      downloaded: job.downloaded,
-      total: job.total,
-      lastLog: job.lastLog,
-      error: job.error || null,
-    });
-    return;
-  }
-
   // ── Static files ─────────────────────────────────────────
   const filePath = path.join(__dirname, pathname);
   const ext = path.extname(filePath);
@@ -408,9 +373,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 // ── Profile download helpers ────────────────────────────────
-
-// In-memory job store: jobId → { status, downloaded, total, lastLog, error }
-const downloadJobs = new Map();
 
 function ytdlpFetchPlaylist(profileUrl, browser) {
   return new Promise((resolve, reject) => {
@@ -468,80 +430,6 @@ function ytdlpFetchPlaylist(profileUrl, browser) {
   });
 }
 
-function startProfileDownloadJob(profileUrl, outputDir, browser) {
-  const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const resolvedDir = outputDir
-    ? path.resolve(outputDir)
-    : path.join(__dirname, "downloads");
-
-  // Ensure output directory exists
-  fs.mkdirSync(resolvedDir, { recursive: true });
-
-  const job = {
-    status: "running",
-    downloaded: 0,
-    total: 0,
-    lastLog: "Đang bắt đầu tải…",
-    error: null,
-  };
-  downloadJobs.set(jobId, job);
-
-  const outputTemplate = path.join(resolvedDir, "%(upload_date)s_%(title).80s.%(ext)s");
-  const args = [
-    "--no-warnings",
-    "--format", "bestvideo+bestaudio/best",
-    "--merge-output-format", "mp4",
-    "--newline",
-  ];
-  if (browser && !IS_SERVER_ENV) args.push("--cookies-from-browser", browser);
-  args.push("-o", outputTemplate, profileUrl);
-
-  let proc;
-  try {
-    proc = spawn(YTDLP_BIN, args);
-  } catch (spawnErr) {
-    job.status = "error";
-    job.error = "yt-dlp không được cài: " + spawnErr.message;
-    return jobId;
-  }
-
-  proc.stdout.on("data", (data) => {
-    const lines = data.toString().split("\n").filter(Boolean);
-    for (const line of lines) {
-      job.lastLog = line.slice(0, 200);
-      // Count completed downloads
-      if (line.includes("[download] 100%") || line.includes("[Merger]") || line.includes("has already been downloaded")) {
-        job.downloaded++;
-      }
-      // Try to parse total
-      const totalMatch = line.match(/(\d+) videos/);
-      if (totalMatch) job.total = parseInt(totalMatch[1]);
-    }
-  });
-
-  proc.on("error", (err) => {
-    job.status = "error";
-    job.error = "Không thể chạy yt-dlp: " + err.message;
-    job.lastLog = job.error;
-  });
-
-  proc.stderr.on("data", (data) => {
-    const line = data.toString().trim();
-    if (line) job.lastLog = line.slice(0, 200);
-  });
-
-  proc.on("close", (code) => {
-    if (code === 0) {
-      job.status = "done";
-      job.lastLog = `✅ Hoàn tất! Đã tải ${job.downloaded} video vào: ${resolvedDir}`;
-    } else {
-      job.status = "error";
-      job.error = `yt-dlp thoát với code ${code}`;
-    }
-  });
-
-  return jobId;
-}
 
 server.listen(PORT, () => {
   console.log(`\n✅  TikSave server đang chạy tại: http://localhost:${PORT}\n`);

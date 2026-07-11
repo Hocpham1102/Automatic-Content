@@ -1290,25 +1290,24 @@
 
       <!-- Step 3: Download config (hidden until fetched) -->
       <div class="profile-card" id="profileDownloadCard" style="display:none;">
-        <label>📁 Thư mục lưu video (để trống = lưu vào ./downloads)</label>
-        <input
-          type="text"
-          id="profileOutputDir"
-          class="profile-input"
-          placeholder="Ví dụ: D:\TikTok\@username  (để trống = thư mục downloads trong dự án)"
-        />
         <div class="profile-actions">
           <button class="profile-btn profile-btn-teal" id="startDownloadBtn" onclick="startProfileDownload()">
-            ⬇ Tải tất cả video
+            ⬇ Tải tất cả về máy
           </button>
+        </div>
+        <div style="font-size:0.77rem; color:var(--muted); margin-top:8px; line-height:1.6;">
+          ℹ️ Video sẽ được tải tuần tự về thư mục <strong>Downloads</strong> của trình duyệt. Giữ tab mở cho đến khi hoàn tất.
         </div>
       </div>
 
-      <!-- Step 4: Progress (hidden until job starts) -->
+      <!-- Step 4: Progress (hidden until download starts) -->
       <div class="profile-card" id="profileProgressCard" style="display:none;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
           <label>⏳ Tiến độ tải xuống</label>
-          <span id="jobStatusBadge" class="profile-status-badge badge-running">🔄 Đang chạy</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="jobStatusBadge" class="profile-status-badge badge-running">🔄 Đang chạy</span>
+            <button id="cancelDownloadBtn" class="profile-btn profile-btn-secondary" onclick="cancelProfileDownload()" style="flex:0 0 auto; min-width:auto; padding:4px 12px; font-size:0.78rem;">⏹ Dừng</button>
+          </div>
         </div>
         <div class="progress-wrap">
           <div class="progress-bar" id="profileProgressBar"></div>
@@ -1317,7 +1316,7 @@
           <span id="progressText">0 / ? video</span>
           <span id="progressPct">0%</span>
         </div>
-        <div class="job-log" id="jobLog">Khởi tạo…</div>
+        <div class="job-log" id="jobLog">Đang chuẩn bị…</div>
       </div>
     </div>
 
@@ -2520,8 +2519,7 @@
       }
       // ── Profile Tab Logic ──
       let currentProfileVideos = [];
-      let currentJobId = null;
-      let jobPollInterval = null;
+
 
       function switchMode(mode) {
         const single = document.getElementById('singleSection');
@@ -2651,80 +2649,115 @@
         });
       }
 
-      async function startProfileDownload() {
-        const raw = document.getElementById('profileUrlInput').value;
-        const profileUrl = normalizeProfileUrl(raw);
-        const outputDir = document.getElementById('profileOutputDir').value.trim();
+      let _profileDownloadCancelled = false;
 
-        if (!profileUrl) { alert('Nhập link profile trước.'); return; }
-
-        const btn = document.getElementById('startDownloadBtn');
-        btn.disabled = true;
-        btn.textContent = '⏳ Đang khởi động…';
-
-        try {
-          const browser = document.getElementById('browserSelect').value;
-          const resp = await fetch('/api/profile/download', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profileUrl, outputDir, browser }),
-          });
-          const data = await resp.json();
-          if (!resp.ok || data.error) throw new Error(data.error || 'Lỗi khởi tạo');
-
-          currentJobId = data.jobId;
-          document.getElementById('profileProgressCard').style.display = 'block';
-          document.getElementById('profileProgressCard').scrollIntoView({ behavior: 'smooth' });
-          startJobPolling(currentJobId, currentProfileVideos.length);
-        } catch (err) {
-          alert('Lỗi: ' + err.message);
-          btn.disabled = false;
-          btn.textContent = '⬇ Tải tất cả video';
-        }
+      function cancelProfileDownload() {
+        _profileDownloadCancelled = true;
+        document.getElementById('cancelDownloadBtn').disabled = true;
+        document.getElementById('jobLog').textContent = '⏹ Đang dừng sau video hiện tại…';
       }
 
-      function startJobPolling(jobId, knownTotal) {
-        if (jobPollInterval) clearInterval(jobPollInterval);
-
-        async function poll() {
-          try {
-            const resp = await fetch(`/api/profile/status?jobId=${jobId}`);
-            const data = await resp.json();
-
-            const total = data.total || knownTotal || 0;
-            const downloaded = data.downloaded || 0;
-            const pct = total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0;
-
-            document.getElementById('profileProgressBar').style.width = pct + '%';
-            document.getElementById('progressText').textContent = `${downloaded} / ${total || '?'} video`;
-            document.getElementById('progressPct').textContent = pct + '%';
-            document.getElementById('jobLog').textContent = data.lastLog || '…';
-
-            const badge = document.getElementById('jobStatusBadge');
-            if (data.status === 'done') {
-              badge.className = 'profile-status-badge badge-done';
-              badge.textContent = '✅ Hoàn tất';
-              document.getElementById('profileProgressBar').style.width = '100%';
-              document.getElementById('progressText').textContent = `${downloaded} video đã lưu`;
-              document.getElementById('progressPct').textContent = '100%';
-              clearInterval(jobPollInterval);
-              jobPollInterval = null;
-              document.getElementById('startDownloadBtn').textContent = '✅ Đã tải xong';
-            } else if (data.status === 'error') {
-              badge.className = 'profile-status-badge badge-error';
-              badge.textContent = '❌ Lỗi';
-              clearInterval(jobPollInterval);
-              jobPollInterval = null;
-              document.getElementById('startDownloadBtn').disabled = false;
-              document.getElementById('startDownloadBtn').textContent = '⬇ Thử lại';
-            }
-          } catch (e) {
-            console.warn('Poll error:', e);
-          }
+      async function startProfileDownload() {
+        if (!currentProfileVideos.length) {
+          alert('Vui lòng xem danh sách video trước.');
+          return;
         }
 
-        poll();
-        jobPollInterval = setInterval(poll, 2000);
+        const btn = document.getElementById('startDownloadBtn');
+        const cancelBtn = document.getElementById('cancelDownloadBtn');
+        const badge = document.getElementById('jobStatusBadge');
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang tải…';
+        cancelBtn.disabled = false;
+        _profileDownloadCancelled = false;
+
+        // Show progress
+        const progressCard = document.getElementById('profileProgressCard');
+        progressCard.style.display = 'block';
+        progressCard.scrollIntoView({ behavior: 'smooth' });
+        badge.className = 'profile-status-badge badge-running';
+        badge.textContent = '🔄 Đang tải';
+
+        const total = currentProfileVideos.length;
+        let downloaded = 0;
+        let failed = 0;
+
+        function updateProgress(i, logMsg) {
+          const pct = total > 0 ? Math.min(100, Math.round((i / total) * 100)) : 0;
+          document.getElementById('profileProgressBar').style.width = pct + '%';
+          document.getElementById('progressText').textContent = `${i} / ${total} video`;
+          document.getElementById('progressPct').textContent = pct + '%';
+          if (logMsg) document.getElementById('jobLog').textContent = logMsg;
+        }
+
+        for (let i = 0; i < total; i++) {
+          if (_profileDownloadCancelled) break;
+
+          const video = currentProfileVideos[i];
+          const shortTitle = (video.title || video.id || '').slice(0, 40);
+          updateProgress(i, `[${i + 1}/${total}] Đang xử lý: ${shortTitle}`);
+
+          try {
+            // Lấy link download thực từ /api/info
+            const infoResp = await fetch(`/api/info?url=${encodeURIComponent(video.url)}`);
+            const infoData = await infoResp.json();
+
+            if (!infoResp.ok || infoData.error || infoData.status === false) {
+              throw new Error(infoData.error || 'Không lấy được thông tin video');
+            }
+
+            const assets = prioritizeHighestQualityAssets(
+              extractDownloadAssets(infoData, video.url)
+            );
+            const videoAsset = assets.find(a => a.kind === 'video');
+            if (!videoAsset) throw new Error('Không tìm thấy link video');
+
+            const date = video.upload_date || '';
+            const filename = `tiktok_${date}_${slugify(video.title) || video.id || Date.now()}.mp4`;
+
+            // Trigger download về trình duyệt qua proxy /api/download
+            const dlUrl = buildDownloadUrl(videoAsset.url, filename, video.url);
+            const a = document.createElement('a');
+            a.href = dlUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            downloaded++;
+            updateProgress(i + 1, `✅ [${i + 1}/${total}] Đã tải: ${shortTitle}`);
+          } catch (err) {
+            failed++;
+            updateProgress(i + 1, `⚠️ [${i + 1}/${total}] Bỏ qua: ${shortTitle} — ${err.message}`);
+          }
+
+          // Delay 1.5s giữa các lần tải để tránh rate limit
+          if (i < total - 1 && !_profileDownloadCancelled) await sleep(1500);
+        }
+
+        // Kết thúc
+        cancelBtn.disabled = true;
+        document.getElementById('profileProgressBar').style.width = '100%';
+        document.getElementById('progressPct').textContent = '100%';
+
+        if (_profileDownloadCancelled) {
+          badge.className = 'profile-status-badge badge-error';
+          badge.textContent = '⏹ Đã dừng';
+          document.getElementById('progressText').textContent = `${downloaded} / ${total} video`;
+          document.getElementById('jobLog').textContent =
+            `Đã dừng. Tải được ${downloaded} video${failed ? `, bỏ qua ${failed} lỗi` : ''}.`;
+          btn.disabled = false;
+          btn.textContent = '⬇ Tiếp tục tải';
+        } else {
+          badge.className = 'profile-status-badge badge-done';
+          badge.textContent = '✅ Hoàn tất';
+          document.getElementById('progressText').textContent = `${downloaded} / ${total} video đã tải`;
+          document.getElementById('jobLog').textContent =
+            `✅ Hoàn tất! ${downloaded} video đã về máy${failed ? ` · ${failed} video bị lỗi` : ''}.`;
+          btn.disabled = false;
+          btn.textContent = '✅ Tải lại';
+        }
       }
 
     </script>
