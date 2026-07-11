@@ -414,14 +414,24 @@ function ytdlpFetchPlaylist(profileUrl, browser) {
       try {
         const data = JSON.parse(stdout);
         const entries = data.entries || [];
-        const videos = entries.map((e) => ({
-          id: e.id,
-          title: e.title || e.id,
-          url: e.url || `https://www.tiktok.com/@${data.uploader_id}/video/${e.id}`,
-          thumbnail: e.thumbnail || "",
-          duration: e.duration || 0,
-          upload_date: e.upload_date || "",
-        }));
+        const videos = entries.map((e) => {
+          let videoUrl = e.url || e.webpage_url || "";
+          if (!videoUrl) {
+            // Fallback: xây URL từ platform gốc
+            const isDouyin = profileUrl.includes("douyin");
+            videoUrl = isDouyin
+              ? `https://www.douyin.com/video/${e.id}`
+              : `https://www.tiktok.com/@${data.uploader_id}/video/${e.id}`;
+          }
+          return {
+            id: e.id,
+            title: e.title || e.id,
+            url: videoUrl,
+            thumbnail: e.thumbnail || "",
+            duration: e.duration || 0,
+            upload_date: e.upload_date || "",
+          };
+        });
         resolve(videos);
       } catch (err) {
         reject(new Error("Failed to parse yt-dlp output: " + err.message));

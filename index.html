@@ -1253,13 +1253,13 @@
     <div id="profileSection">
       <!-- Step 1: URL input -->
       <div class="profile-card">
-        <label>🔗 Link trang cá nhân TikTok</label>
+        <label>🔗 Link trang cá nhân TikTok / Douyin</label>
         <div class="profile-input-row">
           <input
             type="text"
             id="profileUrlInput"
             class="profile-input"
-            placeholder="https://www.tiktok.com/@username hoặc @username"
+            placeholder="https://www.tiktok.com/@username hoặc https://www.douyin.com/user/..."
             autocomplete="off"
           />
           <button class="profile-btn profile-btn-secondary" onclick="pasteProfileUrl()" style="flex: 0 0 auto; min-width: auto; padding: 11px 14px;">📋</button>
@@ -2765,14 +2765,15 @@
 
             // Tải từng asset phù hợp
             const date = video.upload_date || '';
+            const platform = detectPlatform(video.url) || 'tiktok';
             for (let j = 0; j < targetAssets.length; j++) {
               const asset = targetAssets[j];
               let filename;
               if (asset.kind === 'image') {
                 const ext = inferImageExtension(asset.url);
-                filename = `tiktok_${date}_${slugify(video.title) || video.id || Date.now()}_${j + 1}.${ext}`;
+                filename = `${platform}_${date}_${slugify(video.title) || video.id || Date.now()}_${j + 1}.${ext}`;
               } else {
-                filename = `tiktok_${date}_${slugify(video.title) || video.id || Date.now()}.mp4`;
+                filename = `${platform}_${date}_${slugify(video.title) || video.id || Date.now()}.mp4`;
               }
 
               const dlUrl = buildDownloadUrl(asset.url, filename, video.url);
