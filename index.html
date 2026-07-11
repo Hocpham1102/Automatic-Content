@@ -2734,13 +2734,8 @@
           updateProgress(i, `[${i + 1}/${total}] Đang xử lý: ${shortTitle}`);
 
           try {
-            // Lấy link download thực từ /api/info
-            const infoResp = await fetch(`/api/info?url=${encodeURIComponent(video.url)}`);
-            const infoData = await infoResp.json();
-
-            if (!infoResp.ok || infoData.error || infoData.status === false) {
-              throw new Error(infoData.error || 'Không lấy được thông tin');
-            }
+            // Lấy link download thực từ /api/info (có retry)
+            const infoData = await fetchMediaInfoWithRetry(video.url, 4);
 
             const allAssets = prioritizeHighestQualityAssets(
               extractDownloadAssets(infoData, video.url)
