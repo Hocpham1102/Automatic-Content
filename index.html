@@ -1612,7 +1612,7 @@
             <div class="gallery-toolbar">
               <button onclick="selectAllAssets()">✓ Chọn tất cả</button>
               <button onclick="clearAllAssets()">✗ Bỏ chọn</button>
-              <button onclick="downloadSelectedAssets()">⬇ Tải mục đã chọn</button>
+              <button id="dlSelectedToolbar" onclick="downloadSelectedAssets()">⬇ Tải mục đã chọn</button>
             </div>
             <div class="gallery-grid" id="galleryGrid"></div>
           `;
@@ -2050,31 +2050,6 @@
           return assets;
         }
 
-        if (platform === "tiktok") {
-          const tiktokVideo =
-            payload?.video?.[0] ||
-            payload?.play ||
-            payload?.wmplay ||
-            payload?.video_url ||
-            "";
-          if (tiktokVideo) {
-            assets.push({
-              kind: "video",
-              url: tiktokVideo,
-              sourceUrl,
-              filename: buildVideoFilename(d, sourceUrl),
-              previewUrl:
-                d.thumbnail || d.cover || d.origin_cover || tiktokVideo,
-              quality: "",
-            });
-          }
-
-          if (Array.isArray(payload?.audio) && payload.audio.length) {
-            return assets;
-          }
-
-          return assets;
-        }
 
         const videoUrl =
           payload?.video?.[0] ||
@@ -2403,10 +2378,49 @@
 
         if (!selectedAssets.length) return;
 
-        for (let i = 0; i < selectedAssets.length; i++) {
-          const asset = selectedAssets[i];
-          const filename = asset.filename || `media_${i + 1}_${Date.now()}`;
-          await downloadSingleImage(asset.url, filename, asset.sourceUrl || "");
+        const btn = document.getElementById("dlNoWatermark");
+        const btnToolbar = document.getElementById("dlSelectedToolbar");
+        
+        if (btn) {
+          btn.disabled = true;
+          btn.classList.add("loading");
+          btn.querySelector(".btn-label").textContent = "Đang tải file...";
+        }
+        if (btnToolbar) {
+          btnToolbar.disabled = true;
+          btnToolbar.textContent = "⏳ Đang tải file...";
+        }
+
+        try {
+          for (let i = 0; i < selectedAssets.length; i++) {
+            const asset = selectedAssets[i];
+            const filename = asset.filename || `media_${i + 1}_${Date.now()}`;
+            
+            if (btn) btn.querySelector(".btn-label").textContent = `Đang tải ${i+1}/${selectedAssets.length}...`;
+            if (btnToolbar) btnToolbar.textContent = `⏳ Đang tải ${i+1}/${selectedAssets.length}...`;
+            
+            await downloadSingleImage(asset.url, filename, asset.sourceUrl || "");
+            if (i < selectedAssets.length - 1) await sleep(1000);
+          }
+
+          if (btn) btn.querySelector(".btn-label").textContent = "✅ Đang tải xuống...";
+          if (btnToolbar) btnToolbar.textContent = "✅ Đang tải xuống...";
+
+          setTimeout(() => {
+            if (btn) btn.querySelector(".btn-label").textContent = "⬇ Tải mục đã chọn";
+            if (btnToolbar) btnToolbar.textContent = "⬇ Tải mục đã chọn";
+          }, 3000);
+        } catch (err) {
+          console.error(err);
+          showError("Tải file thất bại. Thử lại sau.");
+          if (btn) btn.querySelector(".btn-label").textContent = "⬇ Tải mục đã chọn";
+          if (btnToolbar) btnToolbar.textContent = "⬇ Tải mục đã chọn";
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.classList.remove("loading");
+          }
+          if (btnToolbar) btnToolbar.disabled = false;
         }
       }
 
@@ -2423,12 +2437,17 @@
           for (let i = 0; i < assets.length; i++) {
             const asset = assets[i];
             const assetName = assets.length === 1 ? filename : asset.filename;
+            
+            if (assets.length > 1) {
+              label.textContent = `Đang tải ${i+1}/${assets.length}...`;
+            }
+
             await triggerDownloadAsset(
               asset.url,
               assetName,
               asset.sourceUrl || "",
             );
-            if (i < assets.length - 1) await sleep(250);
+            if (i < assets.length - 1) await sleep(1000);
           }
 
           label.textContent = "✅ Đang tải xuống…";
@@ -2760,7 +2779,7 @@
 
               await downloadViaBlobWithRetry(asset.url, filename, 3, video.url);
 
-              if (j < targetAssets.length - 1) await sleep(400);
+              if (j < targetAssets.length - 1) await sleep(1000);
             }
 
             downloaded++;
